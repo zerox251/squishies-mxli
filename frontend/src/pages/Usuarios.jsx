@@ -5,39 +5,46 @@ export default function Usuarios() {
   const [usuarios, setUsuarios] = useState([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(false)
-  const [form, setForm] = useState({ passwordActual: '', passwordNuevo: '', confirmar: '' })
+  const [alias, setAlias] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmar, setConfirmar] = useState('')
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
 
   const emailActual = localStorage.getItem('email') || ''
-  const aliasActual = localStorage.getItem('alias') || ''
 
   useEffect(() => {
     apiFetch('/api/usuarios').then(r => r.json()).then(setUsuarios).finally(() => setLoading(false))
   }, [])
 
   function abrirModal() {
-    setForm({ passwordActual: '', passwordNuevo: '', confirmar: '' })
+    setAlias(localStorage.getItem('alias') || '')
+    setPassword('')
+    setConfirmar('')
     setMsg('')
     setModal(true)
   }
 
-  async function cambiarPassword() {
-    if (!form.passwordActual || !form.passwordNuevo) return setMsg('Completa todos los campos')
-    if (form.passwordNuevo !== form.confirmar) return setMsg('Las contraseñas no coinciden')
-    if (form.passwordNuevo.length < 6) return setMsg('Mínimo 6 caracteres')
+  async function guardar() {
+    if (!alias.trim()) return setMsg('El nombre no puede estar vacío')
+    if (password && password !== confirmar) return setMsg('Las contraseñas no coinciden')
+    if (password && password.length < 6) return setMsg('Mínimo 6 caracteres')
     setSaving(true)
     try {
-      const res = await apiFetch('/api/auth/password', {
+      const body = { alias: alias.trim() }
+      if (password) body.passwordNuevo = password
+      const res = await apiFetch('/api/usuarios/perfil', {
         method: 'PUT',
-        body: JSON.stringify({ passwordActual: form.passwordActual, passwordNuevo: form.passwordNuevo }),
+        body: JSON.stringify(body),
       })
       if (res.ok) {
-        setMsg('✓ Contraseña actualizada')
-        setTimeout(() => setModal(false), 1200)
+        const data = await res.json()
+        localStorage.setItem('alias', data.alias)
+        setUsuarios(prev => prev.map(u => u.email === emailActual ? { ...u, alias: data.alias } : u))
+        setModal(false)
       } else {
         const data = await res.json()
-        setMsg(data.error || 'Error al actualizar')
+        setMsg(data.error || 'Error al guardar')
       }
     } catch {
       setMsg('Error de conexión')
@@ -72,7 +79,7 @@ export default function Usuarios() {
                   <div>
                     <p className="font-montserrat text-white/80 text-sm font-medium">
                       {u.alias}
-                      {esMio && <span className="ml-2 font-montserrat text-xs text-pop-lav">(tú)</span>}
+                      {esMio && <span className="ml-2 text-xs text-pop-lav">(tú)</span>}
                     </p>
                     <p className="font-montserrat text-white/30 text-xs">{u.email}</p>
                   </div>
@@ -87,7 +94,7 @@ export default function Usuarios() {
                       className="font-montserrat text-xs text-pop-coral border border-pop-coral/30
                                  hover:bg-pop-coral/10 px-3 py-1.5 rounded-lg transition-colors"
                     >
-                      Cambiar contraseña
+                      Mi perfil
                     </button>
                   )}
                 </div>
@@ -97,47 +104,74 @@ export default function Usuarios() {
         </div>
       )}
 
-      {/* Modal cambiar contraseña */}
       {modal && (
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/70 backdrop-blur-sm">
-          <div className="bg-[#1A1A24] border border-white/10 rounded-t-2xl md:rounded-2xl p-5 w-full md:max-w-sm">
-            <h2 className="font-anton text-white text-lg tracking-wider mb-1">CAMBIAR CONTRASEÑA</h2>
-            <p className="font-montserrat text-white/30 text-xs mb-4">{aliasActual}</p>
+          <div className="bg-[#1A1A24] border border-white/10 rounded-t-2xl md:rounded-2xl p-6 w-full md:max-w-sm">
+            <h2 className="font-anton text-white text-xl tracking-wider">MI PERFIL</h2>
+            <p className="font-montserrat text-white/30 text-xs mt-0.5 mb-5">
+              Actualiza tu nombre o contraseña
+            </p>
 
-            <div className="flex flex-col gap-3">
-              {[
-                { label: 'Contraseña actual', key: 'passwordActual' },
-                { label: 'Nueva contraseña', key: 'passwordNuevo' },
-                { label: 'Confirmar nueva contraseña', key: 'confirmar' },
-              ].map(({ label, key }) => (
-                <div key={key}>
-                  <label className="font-montserrat text-white/40 text-xs mb-1 block">{label}</label>
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className="font-montserrat text-white/40 text-xs mb-1.5 block">Nombre</label>
+                <input
+                  type="text"
+                  value={alias}
+                  onChange={e => setAlias(e.target.value)}
+                  className="w-full bg-[#0F0F13] border border-white/10 rounded-lg px-3 py-2.5
+                             text-white text-sm font-montserrat
+                             focus:outline-none focus:border-pop-coral/50"
+                />
+              </div>
+
+              <div>
+                <label className="font-montserrat text-white/40 text-xs mb-1.5 block">
+                  Nueva contraseña <span className="text-white/20">(dejar vacío para no cambiar)</span>
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="Mínimo 6 caracteres"
+                  className="w-full bg-[#0F0F13] border border-white/10 rounded-lg px-3 py-2.5
+                             text-white text-sm font-montserrat placeholder:text-white/15
+                             focus:outline-none focus:border-pop-coral/50"
+                />
+              </div>
+
+              {password && (
+                <div>
+                  <label className="font-montserrat text-white/40 text-xs mb-1.5 block">Confirmar contraseña</label>
                   <input
                     type="password"
-                    value={form[key]}
-                    onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                    value={confirmar}
+                    onChange={e => setConfirmar(e.target.value)}
                     className="w-full bg-[#0F0F13] border border-white/10 rounded-lg px-3 py-2.5
                                text-white text-sm font-montserrat
                                focus:outline-none focus:border-pop-coral/50"
                   />
                 </div>
-              ))}
+              )}
             </div>
 
             {msg && (
-              <p className={`font-montserrat text-xs mt-3 ${msg.startsWith('✓') ? 'text-green-400' : 'text-red-400'}`}>
-                {msg}
-              </p>
+              <p className="font-montserrat text-xs mt-3 text-red-400">{msg}</p>
             )}
 
-            <div className="flex gap-2 mt-5">
-              <button onClick={() => setModal(false)}
-                className="flex-1 border border-white/10 text-white/40 font-montserrat text-sm py-2.5 rounded-lg">
+            <div className="flex gap-2 mt-6">
+              <button
+                onClick={() => setModal(false)}
+                className="flex-1 border border-white/10 text-white/40 font-montserrat text-sm py-2.5 rounded-lg"
+              >
                 Cancelar
               </button>
-              <button onClick={cambiarPassword} disabled={saving}
-                className="flex-1 bg-pop-coral text-white font-montserrat font-bold text-sm py-2.5 rounded-lg disabled:opacity-50">
-                {saving ? 'Guardando…' : 'Actualizar'}
+              <button
+                onClick={guardar}
+                disabled={saving}
+                className="flex-1 bg-pop-coral text-white font-montserrat font-bold text-sm py-2.5 rounded-lg disabled:opacity-50"
+              >
+                {saving ? 'Guardando…' : 'Guardar'}
               </button>
             </div>
           </div>
