@@ -31,9 +31,8 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-[#0F0F13] flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <p className="font-anton text-pop-rose text-4xl tracking-widest">POPIFY</p>
-          <p className="font-montserrat text-white/30 text-sm mt-1">Juguetes Antistrés</p>
+        <div className="flex justify-center mb-8">
+          <img src="/logo.png" alt="Popify" className="w-48 h-48 object-contain drop-shadow-lg" />
         </div>
 
         <form onSubmit={handleSubmit} className="bg-[#1A1A24] border border-white/6 rounded-2xl p-6 flex flex-col gap-4">
