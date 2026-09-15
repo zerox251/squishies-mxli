@@ -23,3 +23,9 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# Prisma agent skills (generados automáticamente)
+backend/.claude/
+backend/.windsurf/
+backend/.agents/
+backend/skills-lock.json
