@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Squishy {
+  id         Int         @id @default(autoincrement())
+  nombre     String
+  precio     Float
+  costo      Float?
+  stock      Int         @default(0)
+  activo     Boolean     @default(true)
+  creadoEn   DateTime    @default(now())
+  ventas     VentaItem[]
+  bazarItems BazarItem[]
+}
+
+model Venta {
+  id    Int         @id @default(autoincrement())
+  fecha DateTime    @default(now())
+  total Float
+  canal String?
+  notas String?
+  items VentaItem[]
+}
+
+model VentaItem {
+  id        Int      @id @default(autoincrement())
+  ventaId   Int
+  squishyId Int?
+  nombre    String
+  cantidad  Int
+  precio    Float
+  costo     Float?
+  venta     Venta    @relation(fields: [ventaId], references: [id], onDelete: Cascade)
+  squishy   Squishy? @relation(fields: [squishyId], references: [id])
+}
+
+model Pedido {
+  id           Int       @id @default(autoincrement())
+  fecha        DateTime  @default(now())
+  proveedor    String
+  total        Float
+  status       String    @default("pendiente")
+  notas        String?
+  fechaLlegada DateTime?
+}
+
+model Bazar {
+  id     Int         @id @default(autoincrement())
+  nombre String
+  fecha  DateTime    @default(now())
+  activo Boolean     @default(true)
+  items  BazarItem[]
+}
+
+model BazarItem {
+  id               Int      @id @default(autoincrement())
+  bazarId          Int
+  squishyId        Int
+  fecha            DateTime @default(now())
+  cantidadEnviada  Int
+  cantidadRegreso  Int      @default(0)
+  bazar            Bazar   @relation(fields: [bazarId], references: [id], onDelete: Cascade)
+  squishy          Squishy @relation(fields: [squishyId], references: [id])
+}
