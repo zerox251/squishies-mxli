@@ -7,6 +7,14 @@ datasource db {
   provider = "postgresql"
 }
 
+model Usuario {
+  id       Int      @id @default(autoincrement())
+  email    String   @unique
+  alias    String
+  password String
+  creadoEn DateTime @default(now())
+}
+
 model Squishy {
   id         Int         @id @default(autoincrement())
   nombre     String

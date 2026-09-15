@@ -9,6 +9,7 @@ const pedidosRoutes = require('./routes/pedidos')
 const bazaresRoutes = require('./routes/bazares')
 const reportesRoutes = require('./routes/reportes')
 const authRoutes = require('./routes/auth')
+const usuariosRoutes = require('./routes/usuarios')
 
 const app = express()
 app.use(cors())
@@ -20,5 +21,6 @@ app.use('/api/ventas', authMiddleware, ventasRoutes)
 app.use('/api/pedidos', authMiddleware, pedidosRoutes)
 app.use('/api/bazares', authMiddleware, bazaresRoutes)
 app.use('/api/reportes', authMiddleware, reportesRoutes)
+app.use('/api/usuarios', authMiddleware, usuariosRoutes)
 
 module.exports = app

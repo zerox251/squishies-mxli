@@ -6,6 +6,7 @@ const NAV = [
   { to: '/ventas/nueva', icon: '＋', label: 'Vender', highlight: true },
   { to: '/pedidos',      icon: '🚚', label: 'Pedidos' },
   { to: '/bazares',      icon: '🎪', label: 'Bazares' },
+  { to: '/usuarios',     icon: '👤', label: 'Perfil' },
 ]
 
 export default function BottomNav() {

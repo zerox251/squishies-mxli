@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { apiFetch } from '../lib/api'
 
 export default function Login() {
-  const [form, setForm] = useState({ username: '', password: '' })
+  const [form, setForm] = useState({ email: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
@@ -17,9 +17,11 @@ export default function Login() {
         method: 'POST',
         body: JSON.stringify(form),
       })
-      if (!res.ok) { setError('Usuario o contraseña incorrectos'); return }
-      const { token } = await res.json()
-      localStorage.setItem('token', token)
+      if (!res.ok) { setError('Correo o contraseña incorrectos'); return }
+      const data = await res.json()
+      localStorage.setItem('token', data.token)
+      localStorage.setItem('alias', data.alias)
+      localStorage.setItem('email', data.email)
       navigate('/dashboard')
     } catch {
       setError('Error de conexión')
@@ -37,16 +39,16 @@ export default function Login() {
 
         <form onSubmit={handleSubmit} className="bg-[#1A1A24] border border-white/6 rounded-2xl p-6 flex flex-col gap-4">
           <div>
-            <label className="font-montserrat text-white/40 text-xs mb-1.5 block">Usuario</label>
+            <label className="font-montserrat text-white/40 text-xs mb-1.5 block">Correo</label>
             <input
-              type="text"
-              value={form.username}
-              onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
+              type="email"
+              value={form.email}
+              onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
               className="w-full bg-[#0F0F13] border border-white/10 rounded-lg px-3 py-3
                          text-white text-sm font-montserrat placeholder-white/20
                          focus:outline-none focus:border-pop-coral/50"
-              placeholder="admin"
-              autoComplete="username"
+              placeholder="tu@correo.com"
+              autoComplete="email"
             />
           </div>
           <div>

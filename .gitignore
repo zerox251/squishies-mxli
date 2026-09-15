@@ -24,6 +24,10 @@ Thumbs.db
 *.log
 npm-debug.log*
 
+# Scripts de seed y utilidades locales (contienen datos sensibles)
+backend/src/seed.js
+backend/src/gen-hashes.js
+
 # Prisma agent skills (generados automáticamente)
 backend/.claude/
 backend/.windsurf/

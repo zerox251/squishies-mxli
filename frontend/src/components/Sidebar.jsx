@@ -7,6 +7,7 @@ const NAV = [
   { to: '/ventas/nueva', label: 'Registrar Venta', highlight: true },
   { to: '/pedidos',      label: 'Pedidos' },
   { to: '/bazares',      label: 'Bazares' },
+  { to: '/usuarios',     label: 'Usuarios' },
 ]
 
 export default function Sidebar() {
