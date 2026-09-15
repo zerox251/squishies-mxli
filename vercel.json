@@ -17,7 +17,8 @@
       "dest": "/api/index.js"
     },
     {
-      "handle": "filesystem"
+      "src": "^/(.*\\.(?:js|css|ico|png|svg|jpg|jpeg|gif|woff2?|ttf|eot|map|txt|xml|webmanifest)$)",
+      "dest": "/frontend/$1"
     },
     {
       "src": "/(.*)",
