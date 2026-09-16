@@ -8,18 +8,28 @@ router.get('/', async (req, res) => {
 })
 
 router.post('/', async (req, res) => {
-  const { proveedor, total, notas, fechaLlegada } = req.body
+  const { proveedor, total, notas, fechaPedido, fechaLlegada, imagen } = req.body
   const pedido = await prisma.pedido.create({
-    data: { proveedor, total, notas, fechaLlegada: fechaLlegada ? new Date(fechaLlegada) : null },
+    data: {
+      proveedor, total, notas,
+      fechaPedido: fechaPedido ? new Date(fechaPedido) : null,
+      fechaLlegada: fechaLlegada ? new Date(fechaLlegada) : null,
+      imagen: imagen || null,
+    },
   })
   res.json(pedido)
 })
 
 router.put('/:id', async (req, res) => {
-  const { proveedor, total, status, notas, fechaLlegada } = req.body
+  const { proveedor, total, status, notas, fechaPedido, fechaLlegada, imagen } = req.body
   const pedido = await prisma.pedido.update({
     where: { id: Number(req.params.id) },
-    data: { proveedor, total, status, notas, fechaLlegada: fechaLlegada ? new Date(fechaLlegada) : null },
+    data: {
+      proveedor, total, status, notas,
+      fechaPedido: fechaPedido ? new Date(fechaPedido) : null,
+      fechaLlegada: fechaLlegada ? new Date(fechaLlegada) : null,
+      imagen: imagen !== undefined ? imagen : undefined,
+    },
   })
   res.json(pedido)
 })

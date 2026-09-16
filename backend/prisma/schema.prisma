@@ -55,7 +55,9 @@ model Pedido {
   total        Float
   status       String    @default("pendiente")
   notas        String?
+  fechaPedido  DateTime?
   fechaLlegada DateTime?
+  imagen       String?
 }
 
 model Bazar {
