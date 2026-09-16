@@ -106,7 +106,7 @@ export default function Usuarios() {
 
       {modal && (
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/70 backdrop-blur-sm">
-          <div className="bg-[#1A1A24] border border-white/10 rounded-t-2xl md:rounded-2xl p-6 w-full md:max-w-sm">
+          <div className="bg-[#1A1A24] border border-white/10 rounded-t-2xl md:rounded-2xl p-6 pb-24 md:pb-6 w-full md:max-w-sm max-h-[90vh] overflow-y-auto">
             <h2 className="font-anton text-white text-xl tracking-wider">MI PERFIL</h2>
             <p className="font-montserrat text-white/30 text-xs mt-0.5 mb-5">
               Actualiza tu nombre o contraseña
