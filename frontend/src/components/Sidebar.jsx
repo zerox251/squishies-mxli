@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { apiFetch } from '../lib/api'
+import PerfilModal from './PerfilModal'
 
 const NAV = [
   { to: '/dashboard',    label: 'Dashboard' },
@@ -127,78 +128,9 @@ export default function Sidebar() {
         </button>
       </aside>
 
-      {/* Modal MI PERFIL */}
-      {modal && (
-        <div className="fixed inset-0 z-50 flex items-start md:items-center justify-center bg-black/70 backdrop-blur-sm pt-4 px-4 md:p-0">
-          <div className="bg-[#1A1A24] border border-white/10 rounded-2xl p-6 w-full md:max-w-sm max-h-[90vh] overflow-y-auto">
-            <h2 className="font-anton text-white text-xl tracking-wider">MI PERFIL</h2>
-            <p className="font-montserrat text-white/30 text-xs mt-0.5 mb-5">
-              Actualiza tu nombre o contraseña
-            </p>
-
-            <div className="flex flex-col gap-4">
-              <div>
-                <label className="font-montserrat text-white/40 text-xs mb-1.5 block">Nombre</label>
-                <input
-                  type="text"
-                  value={alias}
-                  onChange={e => setAlias(e.target.value)}
-                  className="w-full bg-[#0F0F13] border border-white/10 rounded-lg px-3 py-2.5
-                             text-white text-sm font-montserrat
-                             focus:outline-none focus:border-pop-coral/50"
-                />
-              </div>
-
-              <div>
-                <label className="font-montserrat text-white/40 text-xs mb-1.5 block">
-                  Nueva contraseña <span className="text-white/20">(dejar vacío para no cambiar)</span>
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder="Mínimo 6 caracteres"
-                  className="w-full bg-[#0F0F13] border border-white/10 rounded-lg px-3 py-2.5
-                             text-white text-sm font-montserrat placeholder:text-white/15
-                             focus:outline-none focus:border-pop-coral/50"
-                />
-              </div>
-
-              {password && (
-                <div>
-                  <label className="font-montserrat text-white/40 text-xs mb-1.5 block">Confirmar contraseña</label>
-                  <input
-                    type="password"
-                    value={confirmar}
-                    onChange={e => setConfirmar(e.target.value)}
-                    className="w-full bg-[#0F0F13] border border-white/10 rounded-lg px-3 py-2.5
-                               text-white text-sm font-montserrat
-                               focus:outline-none focus:border-pop-coral/50"
-                  />
-                </div>
-              )}
-            </div>
-
-            {msg && <p className="font-montserrat text-xs mt-3 text-red-400">{msg}</p>}
-
-            <div className="flex gap-2 mt-6">
-              <button
-                onClick={() => setModal(false)}
-                className="flex-1 border border-white/10 text-white/40 font-montserrat text-sm py-2.5 rounded-lg"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={guardar}
-                disabled={saving}
-                className="flex-1 bg-pop-coral text-white font-montserrat font-bold text-sm py-2.5 rounded-lg disabled:opacity-50"
-              >
-                {saving ? 'Guardando…' : 'Guardar'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {modal && <PerfilModal alias={alias} setAlias={setAlias} password={password} setPassword={setPassword}
+        confirmar={confirmar} setConfirmar={setConfirmar} msg={msg} saving={saving}
+        onClose={() => setModal(false)} onGuardar={guardar} />}
     </>
   )
 }
