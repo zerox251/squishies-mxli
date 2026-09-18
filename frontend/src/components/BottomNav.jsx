@@ -69,9 +69,17 @@ export default function BottomNav() {
           <div className="relative bg-[#1A1A24] border-t border-white/10 rounded-t-2xl
                           pb-[calc(env(safe-area-inset-bottom)+4.5rem)]">
 
-            {/* Handle */}
-            <div className="flex justify-center pt-3 pb-2">
-              <div className="w-10 h-1 bg-white/15 rounded-full" />
+            {/* Handle + cerrar */}
+            <div className="flex items-center justify-between px-4 pt-3 pb-2">
+              <div className="w-10 h-1 bg-white/15 rounded-full mx-auto absolute left-1/2 -translate-x-1/2 top-3" />
+              <div className="w-6" />
+              <button onClick={() => setOpen(false)}
+                className="ml-auto text-white/30 hover:text-white/60 transition-colors p-1">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                     fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
             </div>
 
             <div className="grid grid-cols-4 gap-1 px-4 py-2">
