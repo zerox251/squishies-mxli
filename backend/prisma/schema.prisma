@@ -58,6 +58,19 @@ model Pedido {
   fechaPedido  DateTime?
   fechaLlegada DateTime?
   imagen       String?
+  gasto        Gasto?
+}
+
+model Gasto {
+  id        Int      @id @default(autoincrement())
+  concepto  String
+  categoria String   @default("operativo")
+  fecha     DateTime @default(now())
+  total     Float
+  estado    String   @default("pendiente")
+  notas     String?
+  pedidoId  Int?     @unique
+  pedido    Pedido?  @relation(fields: [pedidoId], references: [id])
 }
 
 model Bazar {

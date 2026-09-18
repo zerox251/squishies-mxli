@@ -5,7 +5,7 @@ const NAV = [
   { to: '/inventario',   icon: '📦', label: 'Stock' },
   { to: '/ventas/nueva', icon: '＋', label: 'Vender', highlight: true },
   { to: '/pedidos',      icon: '🚚', label: 'Pedidos' },
-  { to: '/bazares',      icon: '🎪', label: 'Bazares' },
+  { to: '/gastos',       icon: '💰', label: 'Gastos' },
   { to: '/usuarios',     icon: '👤', label: 'Perfil' },
 ]
 

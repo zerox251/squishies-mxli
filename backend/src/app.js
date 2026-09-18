@@ -9,6 +9,7 @@ const pedidosRoutes = require('./routes/pedidos')
 const bazaresRoutes = require('./routes/bazares')
 const reportesRoutes = require('./routes/reportes')
 const authRoutes = require('./routes/auth')
+const gastosRoutes = require('./routes/gastos')
 const usuariosRoutes = require('./routes/usuarios')
 
 const app = express()
@@ -21,6 +22,7 @@ app.use('/api/ventas', authMiddleware, ventasRoutes)
 app.use('/api/pedidos', authMiddleware, pedidosRoutes)
 app.use('/api/bazares', authMiddleware, bazaresRoutes)
 app.use('/api/reportes', authMiddleware, reportesRoutes)
+app.use('/api/gastos', authMiddleware, gastosRoutes)
 app.use('/api/usuarios', authMiddleware, usuariosRoutes)
 
 module.exports = app

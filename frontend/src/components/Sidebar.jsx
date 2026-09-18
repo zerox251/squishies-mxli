@@ -9,6 +9,7 @@ const NAV = [
   { to: '/ventas',       label: 'Ventas' },
   { to: '/ventas/nueva', label: 'Registrar Venta', highlight: true },
   { to: '/pedidos',      label: 'Pedidos' },
+  { to: '/gastos',       label: 'Gastos' },
   { to: '/bazares',      label: 'Bazares' },
   { to: '/usuarios',     label: 'Usuarios' },
 ]
