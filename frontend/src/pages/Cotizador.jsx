@@ -1,25 +1,29 @@
 import { useState } from 'react'
 
-const fmt = n => isNaN(n) || !isFinite(n) ? '—' : '$' + Number(n).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const fmt    = n => isNaN(n) || !isFinite(n) ? '—' : '$' + Number(n).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const fmtUSD = n => isNaN(n) || !isFinite(n) ? '—' : 'USD $' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-function calcRow(r, margen) {
+function calcRow(r, margen, tc) {
   const piezas   = Number(r.piezas)   || 0
   const paquetes = Number(r.paquetes) || 0
   const precio   = Number(r.precio)   || 0
+  const precioMXN = r.divisa === 'USD' ? precio * tc : precio
   const totalUnidades = piezas * paquetes
-  const costoUnit     = piezas > 0 ? precio / piezas : 0
+  const costoUnit     = piezas > 0 ? precioMXN / piezas : 0
   const precioPublico = costoUnit * (1 + margen / 100)
   const gananciaUnit  = precioPublico - costoUnit
   const gananciaTotal = gananciaUnit * totalUnidades
-  return { totalUnidades, costoUnit, precioPublico, gananciaUnit, gananciaTotal, inversion: precio * paquetes }
+  const inversionMXN  = precioMXN * paquetes
+  return { totalUnidades, costoUnit, precioPublico, gananciaUnit, gananciaTotal, inversion: inversionMXN }
 }
 
 function newRow(id) {
-  return { id, nombre: '', piezas: '', paquetes: '', precio: '' }
+  return { id, nombre: '', piezas: '', paquetes: '', precio: '', divisa: 'MXN' }
 }
 
 export default function Cotizador() {
   const [margen, setMargen] = useState(100)
+  const [tc, setTc]         = useState(19.5)
   const [rows, setRows]     = useState([newRow(1), newRow(2), newRow(3)])
   const [nextId, setNextId] = useState(4)
 
@@ -36,7 +40,8 @@ export default function Cotizador() {
     setRows(r => r.map(x => x.id === id ? { ...x, [field]: value } : x))
   }
 
-  const calcs = rows.map(r => ({ ...r, ...calcRow(r, margen) }))
+  const hayUSD = rows.some(r => r.divisa === 'USD')
+  const calcs  = rows.map(r => ({ ...r, ...calcRow(r, margen, tc) }))
   const totalInversion  = calcs.reduce((s, r) => s + r.inversion, 0)
   const totalIngreso    = calcs.reduce((s, r) => s + r.precioPublico * r.totalUnidades, 0)
   const totalGanancia   = calcs.reduce((s, r) => s + r.gananciaTotal, 0)
@@ -46,21 +51,31 @@ export default function Cotizador() {
       <h1 className="font-anton text-white text-2xl tracking-widest mb-1">COTIZADOR</h1>
       <p className="font-montserrat text-white/30 text-xs mb-5">Calcula precios de venta a partir del costo por paquete</p>
 
-      {/* Margen global */}
-      <div className="bg-[#1A1A24] border border-white/6 rounded-xl px-4 py-3 mb-4 flex items-center gap-4">
-        <div>
+      {/* Margen + tipo de cambio */}
+      <div className="bg-[#1A1A24] border border-white/6 rounded-xl px-4 py-3 mb-4 flex flex-wrap gap-4 items-center">
+        <div className="flex-1 min-w-0">
           <p className="font-montserrat text-white/40 text-xs mb-0.5">Margen de ganancia</p>
-          <p className="font-montserrat text-white/25 text-[10px]">Precio público = Costo × (1 + Margen%)</p>
+          <p className="font-montserrat text-white/20 text-[10px]">Precio público = Costo MXN × (1 + Margen%)</p>
         </div>
-        <div className="flex items-center gap-2 ml-auto">
+        <div className="flex items-center gap-2">
           <input
             type="number" value={margen} min={0}
             onChange={e => setMargen(Number(e.target.value))}
-            className="w-20 bg-[#0F0F13] border border-pop-coral/40 rounded-lg px-3 py-2
-                       text-white text-sm font-montserrat text-center focus:outline-none
-                       focus:border-pop-coral/80"
+            className="w-16 bg-[#0F0F13] border border-pop-coral/40 rounded-lg px-2 py-2
+                       text-white text-sm font-montserrat text-center focus:outline-none focus:border-pop-coral/80"
           />
           <span className="font-anton text-pop-coral text-lg">%</span>
+        </div>
+        <div className="flex items-center gap-2 border-l border-white/10 pl-4">
+          <div>
+            <p className="font-montserrat text-white/40 text-xs mb-0.5">USD → MXN</p>
+          </div>
+          <input
+            type="number" value={tc} min={1} step={0.1}
+            onChange={e => setTc(Number(e.target.value))}
+            className="w-16 bg-[#0F0F13] border border-white/10 rounded-lg px-2 py-2
+                       text-white text-sm font-montserrat text-center focus:outline-none focus:border-white/30"
+          />
         </div>
       </div>
 
@@ -91,7 +106,6 @@ export default function Cotizador() {
                 {[
                   { label: 'Pzas/paquete', field: 'piezas', placeholder: '24' },
                   { label: 'Paquetes',     field: 'paquetes', placeholder: '1' },
-                  { label: 'Precio paquete ($)', field: 'precio', placeholder: '177' },
                 ].map(({ label, field, placeholder }) => (
                   <div key={field}>
                     <label className="font-montserrat text-white/30 text-[10px] block mb-1">{label}</label>
@@ -104,6 +118,32 @@ export default function Cotizador() {
                     />
                   </div>
                 ))}
+                {/* Precio + divisa */}
+                <div>
+                  <label className="font-montserrat text-white/30 text-[10px] block mb-1">Precio paquete</label>
+                  <div className="flex gap-1">
+                    <input
+                      type="number" value={r.precio} placeholder={r.divisa === 'USD' ? '5' : '177'}
+                      onChange={e => update(r.id, 'precio', e.target.value)}
+                      className="flex-1 min-w-0 bg-[#0F0F13] border border-white/10 rounded-lg px-2 py-2
+                                 text-white text-sm font-montserrat placeholder-white/15
+                                 focus:outline-none focus:border-white/30 text-center"
+                    />
+                    <button
+                      onClick={() => update(r.id, 'divisa', r.divisa === 'MXN' ? 'USD' : 'MXN')}
+                      className={`px-2 py-1 rounded-lg text-[10px] font-montserrat font-bold border transition-colors flex-shrink-0
+                                  ${r.divisa === 'USD'
+                                    ? 'border-blue-500/40 bg-blue-500/10 text-blue-400'
+                                    : 'border-white/15 bg-white/5 text-white/30'}`}>
+                      {r.divisa}
+                    </button>
+                  </div>
+                  {r.divisa === 'USD' && r.precio && (
+                    <p className="font-montserrat text-white/25 text-[10px] mt-1 text-right">
+                      ≈ {fmt(Number(r.precio) * tc)} MXN
+                    </p>
+                  )}
+                </div>
               </div>
 
               {/* Resultados */}
