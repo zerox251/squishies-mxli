@@ -8,6 +8,7 @@ import NuevaVenta from './pages/NuevaVenta'
 import Pedidos from './pages/Pedidos'
 import Bazares from './pages/Bazares'
 import Gastos from './pages/Gastos'
+import Cotizador from './pages/Cotizador'
 import Usuarios from './pages/Usuarios'
 
 function RequireAuth({ children }) {
@@ -36,6 +37,7 @@ export default function App() {
           <Route path="pedidos" element={<Pedidos />} />
           <Route path="bazares" element={<Bazares />} />
           <Route path="gastos" element={<Gastos />} />
+          <Route path="cotizador" element={<Cotizador />} />
           <Route path="usuarios" element={<Usuarios />} />
         </Route>
       </Routes>
