@@ -22,10 +22,13 @@ function newRow(id) {
 }
 
 export default function Cotizador() {
-  const [margen, setMargen] = useState(100)
-  const [tc, setTc]         = useState(19.5)
-  const [rows, setRows]     = useState([newRow(1), newRow(2), newRow(3)])
-  const [nextId, setNextId] = useState(4)
+  const [margen,    setMargen]    = useState(100)
+  const [tc,        setTc]        = useState(19.5)
+  const [rows,      setRows]      = useState([newRow(1), newRow(2), newRow(3)])
+  const [nextId,    setNextId]    = useState(4)
+  const [descuento, setDescuento] = useState('')
+  const [envio,     setEnvio]     = useState('')
+  const [impuesto,  setImpuesto]  = useState('')
 
   function addRow() {
     setRows(r => [...r, newRow(nextId)])
@@ -42,9 +45,15 @@ export default function Cotizador() {
 
   const hayUSD = rows.some(r => r.divisa === 'USD')
   const calcs  = rows.map(r => ({ ...r, ...calcRow(r, margen, tc) }))
-  const totalInversion  = calcs.reduce((s, r) => s + r.inversion, 0)
-  const totalIngreso    = calcs.reduce((s, r) => s + r.precioPublico * r.totalUnidades, 0)
-  const totalGanancia   = calcs.reduce((s, r) => s + r.gananciaTotal, 0)
+
+  const subtotalProductos = calcs.reduce((s, r) => s + r.inversion, 0)
+  const totalUnidades     = calcs.reduce((s, r) => s + r.totalUnidades, 0)
+  const ajDescuento = Number(descuento) || 0
+  const ajEnvio     = Number(envio)     || 0
+  const ajImpuesto  = Number(impuesto)  || 0
+  const costoReal   = subtotalProductos - ajDescuento + ajEnvio + ajImpuesto
+  const totalIngreso  = calcs.reduce((s, r) => s + r.precioPublico * r.totalUnidades, 0)
+  const totalGanancia = totalIngreso - costoReal
 
   return (
     <div>
@@ -170,17 +179,54 @@ export default function Cotizador() {
         + Agregar producto
       </button>
 
+      {/* Ajustes del pedido */}
+      {subtotalProductos > 0 && (
+        <div className="bg-[#1A1A24] border border-white/6 rounded-xl px-4 py-3 mb-4">
+          <p className="font-anton text-white/50 text-xs tracking-widest mb-3">AJUSTES DEL PEDIDO</p>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { label: 'Descuento', key: 'descuento', val: descuento, set: setDescuento, sign: '−', color: 'text-emerald-400' },
+              { label: 'Envío',     key: 'envio',     val: envio,     set: setEnvio,     sign: '+', color: 'text-white/40' },
+              { label: 'Imp. importación', key: 'impuesto', val: impuesto, set: setImpuesto, sign: '+', color: 'text-white/40' },
+            ].map(({ label, key, val, set, sign, color }) => (
+              <div key={key}>
+                <label className="font-montserrat text-white/30 text-[10px] block mb-1">
+                  <span className={`${color} mr-0.5`}>{sign}</span>{label}
+                </label>
+                <input
+                  type="number" value={val} min={0} placeholder="0"
+                  onChange={e => set(e.target.value)}
+                  className="w-full bg-[#0F0F13] border border-white/10 rounded-lg px-2 py-2
+                             text-white text-sm font-montserrat placeholder-white/15
+                             focus:outline-none focus:border-white/30 text-center"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Resumen financiero */}
-      {totalInversion > 0 && (
+      {subtotalProductos > 0 && (
         <div className="bg-[#1A1A24] border border-white/6 rounded-xl px-4 py-4">
           <p className="font-anton text-white/50 text-sm tracking-widest mb-3">RESUMEN DEL PEDIDO</p>
           <div className="flex flex-col gap-2">
-            <SummaryRow label="Inversión total (costo)"    value={fmt(totalInversion)} />
-            <SummaryRow label="Ingreso esperado (ventas)"  value={fmt(totalIngreso)} />
+            <SummaryRow label="Subtotal productos"         value={fmt(subtotalProductos)} />
+            {ajDescuento > 0 && <SummaryRow label="Descuento"             value={`− ${fmt(ajDescuento)}`} green />}
+            {ajEnvio     > 0 && <SummaryRow label="Envío"                 value={`+ ${fmt(ajEnvio)}`} />}
+            {ajImpuesto  > 0 && <SummaryRow label="Imp. importación"      value={`+ ${fmt(ajImpuesto)}`} />}
+            {(ajDescuento > 0 || ajEnvio > 0 || ajImpuesto > 0) && (
+              <div className="border-t border-white/5 pt-2 mt-0.5">
+                <SummaryRow label="Costo real total"       value={fmt(costoReal)} highlight />
+              </div>
+            )}
+            <div className={`${(ajDescuento > 0 || ajEnvio > 0 || ajImpuesto > 0) ? '' : 'border-t border-white/5 pt-2 mt-0.5'}`}>
+              <SummaryRow label="Ingreso esperado (ventas)" value={fmt(totalIngreso)} />
+            </div>
             <div className="border-t border-white/5 pt-2 mt-1">
               <SummaryRow label="Ganancia bruta esperada"  value={fmt(totalGanancia)} highlight />
               <SummaryRow label="Retorno sobre inversión"
-                value={totalInversion > 0 ? `${((totalGanancia / totalInversion) * 100).toFixed(1)}%` : '—'}
+                value={costoReal > 0 ? `${((totalGanancia / costoReal) * 100).toFixed(1)}%` : '—'}
                 accent />
             </div>
           </div>
@@ -202,12 +248,12 @@ function ResultRow({ label, value, highlight, accent, mono }) {
   )
 }
 
-function SummaryRow({ label, value, highlight, accent }) {
+function SummaryRow({ label, value, highlight, accent, green }) {
   return (
     <div className="flex justify-between items-center py-0.5">
       <span className="font-montserrat text-white/40 text-sm">{label}</span>
       <span className={`font-anton text-base
-        ${highlight ? 'text-white' : accent ? 'text-emerald-400' : 'text-white/60'}`}>
+        ${highlight ? 'text-white' : accent ? 'text-emerald-400' : green ? 'text-emerald-400' : 'text-white/60'}`}>
         {value}
       </span>
     </div>
