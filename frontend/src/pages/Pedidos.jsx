@@ -78,7 +78,8 @@ export default function Pedidos() {
 
   function fmtFecha(f) {
     if (!f) return '—'
-    return new Date(f).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })
+    const [y, m, d] = f.slice(0, 10).split('-').map(Number)
+    return new Date(y, m - 1, d).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })
   }
 
   const deudaTotal = pedidos.filter(p => p.status === 'pendiente').reduce((s, p) => s + p.total, 0)

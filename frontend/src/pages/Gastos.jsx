@@ -26,16 +26,16 @@ function generarMeses() {
 
 function fmtFecha(f) {
   if (!f) return ''
-  const d = new Date(f)
-  return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })
+  const [y, m, d] = f.slice(0, 10).split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })
 }
 
 function groupByMonth(gastos) {
   const groups = {}
   gastos.forEach(g => {
-    const d = new Date(g.fecha)
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-    const label = d.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })
+    const [y, m] = g.fecha.slice(0, 7).split('-').map(Number)
+    const key = `${y}-${String(m).padStart(2, '0')}`
+    const label = new Date(y, m - 1, 1).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })
     if (!groups[key]) groups[key] = { label, items: [] }
     groups[key].items.push(g)
   })
