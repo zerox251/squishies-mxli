@@ -184,9 +184,10 @@ export default function Pedidos() {
                   <label className="font-montserrat text-white/40 text-xs mb-1 block">{label}</label>
                   <input type={type} value={form[key]} placeholder={placeholder || ''}
                     onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                    className="w-full bg-[#0F0F13] border border-white/10 rounded-lg px-3 py-3
+                    className={`w-full bg-[#0F0F13] border border-white/10 rounded-lg px-3 py-3
                                text-white text-sm font-montserrat placeholder-white/20
-                               focus:outline-none focus:border-pop-coral/50" />
+                               focus:outline-none focus:border-pop-coral/50
+                               ${type === 'date' ? '[color-scheme:dark]' : ''}`} />
                 </div>
               ))}
 

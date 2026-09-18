@@ -300,7 +300,7 @@ export default function Gastos() {
                   <input type="date" value={form.fecha}
                     onChange={e => setForm(f => ({ ...f, fecha: e.target.value }))}
                     className="w-full bg-[#0F0F13] border border-white/10 rounded-lg px-3 py-3
-                               text-white text-sm font-montserrat focus:outline-none" />
+                               text-white text-sm font-montserrat focus:outline-none [color-scheme:dark]" />
                 </div>
                 <div>
                   <label className="font-montserrat text-white/40 text-xs mb-1 block">Total ($)</label>
