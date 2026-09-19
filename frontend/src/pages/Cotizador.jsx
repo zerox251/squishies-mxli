@@ -158,7 +158,7 @@ export default function Cotizador() {
                                       transition-colors flex-shrink-0
                                       ${r.divisa === 'USD'
                                         ? 'border-blue-500/40 bg-blue-500/10 text-blue-400'
-                                        : 'border-white/12 bg-white/4 text-white/25'}`}>
+                                        : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400'}`}>
                           {r.divisa}
                         </button>
                       </div>
@@ -212,7 +212,7 @@ export default function Cotizador() {
                                   transition-colors flex-shrink-0
                                   ${r.divisa === 'USD'
                                     ? 'border-blue-500/40 bg-blue-500/10 text-blue-400'
-                                    : 'border-white/12 bg-white/4 text-white/25'}`}>
+                                    : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400'}`}>
                       {r.divisa}
                     </button>
                   </div>
