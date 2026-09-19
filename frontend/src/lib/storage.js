@@ -20,6 +20,22 @@ function comprimirImagen(file, maxW = 1200) {
   })
 }
 
+export async function subirArchivo(file, bucket = 'pedidos') {
+  const ext  = file.name.split('.').pop().toLowerCase()
+  const nombre = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+  const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${bucket}/${nombre}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${ANON_KEY}`,
+      'Content-Type': file.type || 'application/octet-stream',
+      'x-upsert': 'false',
+    },
+    body: file,
+  })
+  if (!res.ok) throw new Error('Error al subir archivo')
+  return `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${nombre}`
+}
+
 export async function subirImagen(file, bucket = 'pedidos') {
   const blob = await comprimirImagen(file)
   const ext = 'jpg'

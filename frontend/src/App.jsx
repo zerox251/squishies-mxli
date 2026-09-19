@@ -10,6 +10,7 @@ import Bazares from './pages/Bazares'
 import Gastos from './pages/Gastos'
 import Cotizador from './pages/Cotizador'
 import Usuarios from './pages/Usuarios'
+import Proveedores from './pages/Proveedores'
 
 function RequireAuth({ children }) {
   const token = localStorage.getItem('token')
@@ -38,7 +39,8 @@ export default function App() {
           <Route path="bazares" element={<Bazares />} />
           <Route path="gastos" element={<Gastos />} />
           <Route path="cotizador" element={<Cotizador />} />
-          <Route path="usuarios" element={<Usuarios />} />
+          <Route path="usuarios"    element={<Usuarios />} />
+          <Route path="proveedores" element={<Proveedores />} />
         </Route>
       </Routes>
     </BrowserRouter>

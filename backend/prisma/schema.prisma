@@ -59,6 +59,7 @@ model Pedido {
   fechaPedido  DateTime?
   fechaLlegada DateTime?
   imagen       String?
+  documento    String?
   gasto        Gasto?
 }
 
@@ -80,6 +81,17 @@ model Bazar {
   fecha  DateTime    @default(now())
   activo Boolean     @default(true)
   items  BazarItem[]
+}
+
+model Proveedor {
+  id        Int      @id @default(autoincrement())
+  nombre    String
+  pais      String   @default("MX")
+  contacto  String?
+  telefono  String?
+  email     String?
+  notas     String?
+  creadoEn  DateTime @default(now())
 }
 
 model BazarItem {

@@ -12,6 +12,7 @@ const NAV = [
   { to: '/gastos',       label: 'Gastos' },
   { to: '/cotizador',    label: 'Cotizador' },
   { to: '/bazares',      label: 'Bazares' },
+  { to: '/proveedores',  label: 'Proveedores' },
   { to: '/usuarios',     label: 'Usuarios' },
 ]
 
