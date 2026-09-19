@@ -2,13 +2,41 @@ import { useEffect, useRef, useState } from 'react'
 import { apiFetch } from '../lib/api'
 import { subirImagen, subirArchivo } from '../lib/storage'
 
-const EMPTY = { proveedorId: null, total: '', notas: '', fechaPedido: '', fechaLlegada: '', status: 'pendiente', imagen: null, documento: null, _imgFile: null, _docFile: null }
+// documento se guarda como JSON string: [{url, nombre}]
+function parseDocs(raw) {
+  if (!raw) return []
+  try {
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed)) return parsed
+    return [{ url: raw, nombre: 'Documento' }]
+  } catch {
+    return [{ url: raw, nombre: 'Documento' }]
+  }
+}
+
+const EMPTY = {
+  proveedorId: null, total: '', notas: '',
+  fechaPedido: '', fechaLlegada: '', status: 'pendiente',
+  imagen: null,
+  _imgFile: null,
+  docs: [],       // [{url, nombre}] — guardados
+  _newFiles: [],  // File[] — pendientes de subir
+}
 const STATUS = {
   pendiente: 'bg-yellow-500/15 text-yellow-400',
   pagado:    'bg-green-500/15 text-green-400',
 }
 const PAIS_COLOR = { MX: 'text-green-400', US: 'text-blue-400', CN: 'text-red-400', JP: 'text-pink-400' }
 const fmt = n => '$' + (n || 0).toLocaleString('es-MX')
+
+function DocIcon({ nombre }) {
+  const ext = (nombre || '').split('.').pop().toLowerCase()
+  if (['jpg','jpeg','png','webp','gif'].includes(ext))
+    return <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+  if (ext === 'pdf')
+    return <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+  return <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+}
 
 export default function Pedidos() {
   const [pedidos,    setPedidos]    = useState([])
@@ -41,8 +69,7 @@ export default function Pedidos() {
     setForm({ ...EMPTY })
     setEditId(null); setImgPreview(null)
     setProvSearch(''); setCreandoProv(false); setNuevoProv({ nombre: '', pais: 'MX' })
-    loadProvs()
-    setModal(true)
+    loadProvs(); setModal(true)
   }
   function openEdit(p) {
     const prov = p.proveedor
@@ -52,14 +79,15 @@ export default function Pedidos() {
       fechaPedido:  p.fechaPedido  ? p.fechaPedido.slice(0, 10)  : '',
       fechaLlegada: p.fechaLlegada ? p.fechaLlegada.slice(0, 10) : '',
       status: p.status,
-      imagen: p.imagen || null, documento: p.documento || null,
-      _imgFile: null, _docFile: null,
+      imagen: p.imagen || null,
+      _imgFile: null,
+      docs: parseDocs(p.documento),
+      _newFiles: [],
     })
     setImgPreview(p.imagen || null)
     setProvSearch(prov?.nombre || '')
     setCreandoProv(false)
-    loadProvs()
-    setEditId(p.id); setModal(true)
+    loadProvs(); setEditId(p.id); setModal(true)
   }
 
   async function crearProveedor() {
@@ -75,23 +103,42 @@ export default function Pedidos() {
     setSavingProv(false)
   }
 
+  function onPickDocs(e) {
+    const files = Array.from(e.target.files)
+    if (!files.length) return
+    setForm(f => ({ ...f, _newFiles: [...f._newFiles, ...files] }))
+    e.target.value = ''
+  }
+  function removeNewFile(i) {
+    setForm(f => ({ ...f, _newFiles: f._newFiles.filter((_, idx) => idx !== i) }))
+  }
+  function removeSavedDoc(i) {
+    setForm(f => ({ ...f, docs: f.docs.filter((_, idx) => idx !== i) }))
+  }
+
   async function onFile(e) {
     const file = e.target.files[0]; if (!file) return
     setImgPreview(URL.createObjectURL(file))
     setForm(f => ({ ...f, _imgFile: file }))
   }
-  async function onDoc(e) {
-    const file = e.target.files[0]; if (!file) return
-    setForm(f => ({ ...f, _docFile: file, documento: file.name }))
-  }
 
   async function save() {
     if (!form.proveedorId || !form.total) return
     setSaving(true)
-    let imagenUrl    = form.imagen
-    let documentoUrl = form.documento
-    if (form._imgFile) { try { imagenUrl    = await subirImagen(form._imgFile) } catch {} }
-    if (form._docFile) { try { documentoUrl = await subirArchivo(form._docFile) } catch {} }
+
+    let imagenUrl = form.imagen
+    if (form._imgFile) { try { imagenUrl = await subirImagen(form._imgFile) } catch {} }
+
+    // subir archivos nuevos
+    const uploadedDocs = [...form.docs]
+    for (const file of form._newFiles) {
+      try {
+        const isImg = file.type.startsWith('image/')
+        const url = isImg ? await subirImagen(file) : await subirArchivo(file)
+        uploadedDocs.push({ url, nombre: file.name })
+      } catch {}
+    }
+
     const body = {
       proveedorId:  form.proveedorId,
       total:        Number(form.total),
@@ -99,8 +146,8 @@ export default function Pedidos() {
       fechaPedido:  form.fechaPedido  || null,
       fechaLlegada: form.fechaLlegada || null,
       status:       form.status,
-      imagen:       imagenUrl    ?? null,
-      documento:    documentoUrl ?? null,
+      imagen:       imagenUrl ?? null,
+      documento:    uploadedDocs.length ? JSON.stringify(uploadedDocs) : null,
     }
     const path = editId ? `/api/pedidos/${editId}` : '/api/pedidos'
     await apiFetch(path, { method: editId ? 'PUT' : 'POST', body: JSON.stringify(body) })
@@ -146,6 +193,7 @@ export default function Pedidos() {
         <div className="flex flex-col gap-2">
           {pedidos.map(p => {
             const prov = p.proveedor
+            const docs = parseDocs(p.documento)
             return (
               <div key={p.id} className="bg-[#1A1A24] border border-white/6 rounded-xl px-4 py-3">
                 <div className="flex items-start justify-between gap-3">
@@ -156,29 +204,27 @@ export default function Pedidos() {
                           {prov.pais}
                         </span>
                       )}
-                      <p className="font-montserrat text-white/80 text-sm font-medium">
-                        {prov?.nombre || '—'}
-                      </p>
+                      <p className="font-montserrat text-white/80 text-sm font-medium">{prov?.nombre || '—'}</p>
                       <span className={`font-montserrat text-xs px-2 py-0.5 rounded-full ${STATUS[p.status] || STATUS.pendiente}`}>
                         {p.status}
                       </span>
                     </div>
                     <p className="font-montserrat text-white/30 text-xs">
-                      {p.fechaPedido  && `Pedido: ${fmtFecha(p.fechaPedido)} · `}
+                      {p.fechaPedido && `Pedido: ${fmtFecha(p.fechaPedido)} · `}
                       Llega: {fmtFecha(p.fechaLlegada)}
                       {p.notas && ` · ${p.notas}`}
                     </p>
-                    {p.documento && (
-                      <a href={p.documento} target="_blank" rel="noreferrer"
-                        className="font-montserrat text-[10px] text-pop-lav/60 hover:text-pop-lav
-                                   flex items-center gap-1 mt-1 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24"
-                             fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                          <polyline points="14 2 14 8 20 8"/>
-                        </svg>
-                        Ver documento
-                      </a>
+                    {docs.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-1.5">
+                        {docs.map((d, i) => (
+                          <a key={i} href={d.url} target="_blank" rel="noreferrer"
+                            className="font-montserrat text-[10px] text-pop-lav/60 hover:text-pop-lav
+                                       flex items-center gap-1 transition-colors">
+                            <DocIcon nombre={d.nombre} />
+                            {d.nombre.length > 20 ? d.nombre.slice(0, 20) + '…' : d.nombre}
+                          </a>
+                        ))}
+                      </div>
                     )}
                   </div>
                   <div className="flex items-start gap-2 flex-shrink-0">
@@ -233,14 +279,11 @@ export default function Pedidos() {
                 {!creandoProv ? (
                   <>
                     {provSeleccionado ? (
-                      <div className="flex items-center gap-2 bg-[#0F0F13] border border-emerald-500/30
-                                      rounded-lg px-3 py-2.5">
+                      <div className="flex items-center gap-2 bg-[#0F0F13] border border-emerald-500/30 rounded-lg px-3 py-2.5">
                         <span className={`font-montserrat text-[10px] font-bold ${PAIS_COLOR[provSeleccionado.pais] || ''}`}>
                           {provSeleccionado.pais}
                         </span>
-                        <span className="font-montserrat text-white/80 text-sm flex-1">
-                          {provSeleccionado.nombre}
-                        </span>
+                        <span className="font-montserrat text-white/80 text-sm flex-1">{provSeleccionado.nombre}</span>
                         <button onClick={() => { setForm(f => ({ ...f, proveedorId: null })); setProvSearch('') }}
                           className="text-white/25 hover:text-white/60 transition-colors text-xs">✕</button>
                       </div>
@@ -257,8 +300,7 @@ export default function Pedidos() {
                               <button key={p.id}
                                 onClick={() => { setForm(f => ({ ...f, proveedorId: p.id })); setProvSearch(p.nombre) }}
                                 className="w-full text-left px-3 py-2 font-montserrat text-sm
-                                           border-b border-white/5 last:border-0
-                                           text-white/60 hover:bg-white/5 transition-colors">
+                                           border-b border-white/5 last:border-0 text-white/60 hover:bg-white/5 transition-colors">
                                 <span className={`text-[10px] font-bold mr-2 ${PAIS_COLOR[p.pais] || ''}`}>{p.pais}</span>
                                 {p.nombre}
                               </button>
@@ -340,43 +382,53 @@ export default function Pedidos() {
                 </div>
               )}
 
-              {/* Documento */}
+              {/* Documentos múltiples */}
               <div>
                 <label className="font-montserrat text-white/40 text-xs mb-1 block">
-                  Documento <span className="text-white/20">(PDF, cotización, orden de compra)</span>
+                  Documentos <span className="text-white/20">(PDF, CSV, imágenes — varios)</span>
                 </label>
-                <input ref={docRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,image/*"
-                  onChange={onDoc} className="hidden" />
-                {form.documento ? (
-                  <div className="flex items-center gap-2 bg-[#0F0F13] border border-white/8 rounded-lg px-3 py-2.5">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
-                         fill="none" stroke="currentColor" strokeWidth="2" className="text-pop-lav/60 flex-shrink-0">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                      <polyline points="14 2 14 8 20 8"/>
-                    </svg>
-                    <span className="font-montserrat text-white/50 text-xs flex-1 truncate">
-                      {form._docFile ? form._docFile.name : 'Documento adjunto'}
-                    </span>
-                    <button onClick={() => setForm(f => ({ ...f, documento: null, _docFile: null }))}
-                      className="text-white/25 hover:text-red-400 text-xs transition-colors">✕</button>
+                <input ref={docRef} type="file" multiple
+                  accept=".pdf,.csv,.doc,.docx,.xls,.xlsx,image/*"
+                  onChange={onPickDocs} className="hidden" />
+
+                {/* Documentos ya guardados */}
+                {form.docs.map((d, i) => (
+                  <div key={i} className="flex items-center gap-2 bg-[#0F0F13] border border-white/8
+                                          rounded-lg px-3 py-2 mb-1.5">
+                    <span className="text-pop-lav/60 flex-shrink-0"><DocIcon nombre={d.nombre} /></span>
+                    <a href={d.url} target="_blank" rel="noreferrer"
+                      className="font-montserrat text-white/50 text-xs flex-1 truncate hover:text-white/80 transition-colors">
+                      {d.nombre}
+                    </a>
+                    <button onClick={() => removeSavedDoc(i)}
+                      className="text-white/20 hover:text-red-400 text-xs transition-colors flex-shrink-0">✕</button>
                   </div>
-                ) : (
-                  <button onClick={() => docRef.current.click()}
-                    className="w-full border border-dashed border-white/15 rounded-lg py-4
-                               text-white/25 font-montserrat text-xs hover:border-white/30
-                               hover:text-white/40 transition-colors flex items-center justify-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                         fill="none" stroke="currentColor" strokeWidth="1.5">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                      <polyline points="14 2 14 8 20 8"/>
-                      <line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>
-                    </svg>
-                    Adjuntar documento
-                  </button>
-                )}
+                ))}
+
+                {/* Archivos nuevos seleccionados (aún no subidos) */}
+                {form._newFiles.map((f, i) => (
+                  <div key={i} className="flex items-center gap-2 bg-[#0F0F13] border border-emerald-500/20
+                                          rounded-lg px-3 py-2 mb-1.5">
+                    <span className="text-emerald-400/60 flex-shrink-0"><DocIcon nombre={f.name} /></span>
+                    <span className="font-montserrat text-white/40 text-xs flex-1 truncate">{f.name}</span>
+                    <button onClick={() => removeNewFile(i)}
+                      className="text-white/20 hover:text-red-400 text-xs transition-colors flex-shrink-0">✕</button>
+                  </div>
+                ))}
+
+                <button onClick={() => docRef.current.click()}
+                  className="w-full border border-dashed border-white/15 rounded-lg py-3
+                             text-white/25 font-montserrat text-xs hover:border-white/30
+                             hover:text-white/40 transition-colors flex items-center justify-center gap-2 mt-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                       fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                  Agregar archivos
+                </button>
               </div>
 
-              {/* Imagen */}
+              {/* Imagen de referencia */}
               <div>
                 <label className="font-montserrat text-white/40 text-xs mb-1 block">Imagen de referencia</label>
                 <input ref={fileRef} type="file" accept="image/*" capture="environment"
