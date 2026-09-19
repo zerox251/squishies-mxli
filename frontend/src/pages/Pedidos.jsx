@@ -1,43 +1,97 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiFetch } from '../lib/api'
 import { subirImagen, subirArchivo } from '../lib/storage'
 
-// documento se guarda como JSON string: [{url, nombre}]
+// ── helpers ──────────────────────────────────────────────────────────────────
 function parseDocs(raw) {
   if (!raw) return []
   try {
-    const parsed = JSON.parse(raw)
-    if (Array.isArray(parsed)) return parsed
-    return [{ url: raw, nombre: 'Documento' }]
-  } catch {
-    return [{ url: raw, nombre: 'Documento' }]
-  }
+    const p = JSON.parse(raw)
+    return Array.isArray(p) ? p : [{ url: raw, nombre: 'Documento' }]
+  } catch { return [{ url: raw, nombre: 'Documento' }] }
 }
 
+function generarMeses() {
+  const out = []
+  const hoy = new Date()
+  for (let i = 0; i < 18; i++) {
+    const d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1)
+    out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+  }
+  return out
+}
+
+function mesLabel(ym) {
+  const [y, m] = ym.split('-')
+  return new Date(y, m - 1, 1)
+    .toLocaleString('es-MX', { month: 'long', year: 'numeric' })
+    .toUpperCase()
+}
+
+function groupByMonth(pedidos) {
+  const groups = {}
+  for (const p of pedidos) {
+    const raw = p.fechaPedido || p.fecha
+    let key = '__sin_fecha__'
+    if (raw) {
+      const d = new Date(raw)
+      key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    }
+    if (!groups[key]) groups[key] = []
+    groups[key].push(p)
+  }
+  return Object.entries(groups).sort(([a], [b]) => {
+    if (a === '__sin_fecha__') return 1
+    if (b === '__sin_fecha__') return -1
+    return b.localeCompare(a)
+  })
+}
+
+function localDate(iso) {
+  if (!iso) return null
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+function fmtDay(iso) {
+  const d = localDate(iso); if (!d) return null
+  return { day: d.getDate(), mon: d.toLocaleString('es-MX', { month: 'short' }) }
+}
+function fmtFecha(iso) {
+  const d = localDate(iso); if (!d) return '—'
+  return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })
+}
+
+const PAIS_COLOR  = { MX: 'text-green-400', US: 'text-blue-400', CN: 'text-red-400', JP: 'text-pink-400' }
+const PAIS_BADGE  = {
+  MX: 'border-green-500/30 bg-green-500/10 text-green-400',
+  US: 'border-blue-500/30 bg-blue-500/10 text-blue-400',
+  CN: 'border-red-500/30 bg-red-500/10 text-red-400',
+  JP: 'border-pink-500/30 bg-pink-500/10 text-pink-400',
+}
+const STATUS_CLS  = {
+  pendiente: 'border-yellow-500/30 bg-yellow-500/10 text-yellow-400',
+  pagado:    'border-green-500/30 bg-green-500/10 text-green-400',
+}
+const fmt = n => '$' + (n || 0).toLocaleString('es-MX')
+const MESES = generarMeses()
+
+// ── modal EMPTY ──────────────────────────────────────────────────────────────
 const EMPTY = {
   proveedorId: null, total: '', notas: '',
   fechaPedido: '', fechaLlegada: '', status: 'pendiente',
-  imagen: null,
-  _imgFile: null,
-  docs: [],       // [{url, nombre}] — guardados
-  _newFiles: [],  // File[] — pendientes de subir
+  imagen: null, _imgFile: null, docs: [], _newFiles: [],
 }
-const STATUS = {
-  pendiente: 'bg-yellow-500/15 text-yellow-400',
-  pagado:    'bg-green-500/15 text-green-400',
-}
-const PAIS_COLOR = { MX: 'text-green-400', US: 'text-blue-400', CN: 'text-red-400', JP: 'text-pink-400' }
-const fmt = n => '$' + (n || 0).toLocaleString('es-MX')
 
-function DocIcon({ nombre }) {
-  const ext = (nombre || '').split('.').pop().toLowerCase()
+function DocIcon({ nombre = '' }) {
+  const ext = nombre.split('.').pop().toLowerCase()
   if (['jpg','jpeg','png','webp','gif'].includes(ext))
-    return <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+    return <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
   if (ext === 'pdf')
-    return <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-  return <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    return <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
+  return <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
 }
 
+// ── component ─────────────────────────────────────────────────────────────────
 export default function Pedidos() {
   const [pedidos,    setPedidos]    = useState([])
   const [loading,    setLoading]    = useState(true)
@@ -48,6 +102,12 @@ export default function Pedidos() {
   const [imgPreview, setImgPreview] = useState(null)
   const [verImg,     setVerImg]     = useState(null)
 
+  // filtros
+  const [mesFiltro,  setMesFiltro]  = useState('')
+  const [provFiltro, setProvFiltro] = useState('')
+  const [paisFiltro, setPaisFiltro] = useState('')
+
+  // proveedor selector (modal)
   const [proveedores,  setProveedores]  = useState([])
   const [provSearch,   setProvSearch]   = useState('')
   const [creandoProv,  setCreandoProv]  = useState(false)
@@ -57,122 +117,117 @@ export default function Pedidos() {
   const fileRef = useRef()
   const docRef  = useRef()
 
-  function load() {
-    apiFetch('/api/pedidos').then(r => r.json()).then(setPedidos).finally(() => setLoading(false))
-  }
-  function loadProvs() {
-    return apiFetch('/api/proveedores').then(r => r.json()).then(setProveedores)
-  }
-  useEffect(load, [])
+  const fetchPedidos = useCallback(() => {
+    setLoading(true)
+    const params = new URLSearchParams()
+    if (mesFiltro)  params.set('mes', mesFiltro)
+    if (provFiltro) params.set('proveedorId', provFiltro)
+    if (paisFiltro) params.set('pais', paisFiltro)
+    apiFetch(`/api/pedidos?${params}`)
+      .then(r => r.json()).then(setPedidos).finally(() => setLoading(false))
+  }, [mesFiltro, provFiltro, paisFiltro])
 
+  const loadProvs = () =>
+    apiFetch('/api/proveedores').then(r => r.json()).then(setProveedores)
+
+  useEffect(() => { fetchPedidos() }, [fetchPedidos])
+  useEffect(() => { loadProvs() }, [])
+
+  // ── modal open ──────────────────────────────────────────────────────────────
   function openNew() {
-    setForm({ ...EMPTY })
-    setEditId(null); setImgPreview(null)
+    setForm({ ...EMPTY }); setEditId(null); setImgPreview(null)
     setProvSearch(''); setCreandoProv(false); setNuevoProv({ nombre: '', pais: 'MX' })
-    loadProvs(); setModal(true)
+    setModal(true)
   }
   function openEdit(p) {
     const prov = p.proveedor
     setForm({
-      proveedorId: prov?.id ?? null,
-      total: p.total, notas: p.notas || '',
+      proveedorId: prov?.id ?? null, total: p.total, notas: p.notas || '',
       fechaPedido:  p.fechaPedido  ? p.fechaPedido.slice(0, 10)  : '',
       fechaLlegada: p.fechaLlegada ? p.fechaLlegada.slice(0, 10) : '',
-      status: p.status,
-      imagen: p.imagen || null,
-      _imgFile: null,
-      docs: parseDocs(p.documento),
-      _newFiles: [],
+      status: p.status, imagen: p.imagen || null, _imgFile: null,
+      docs: parseDocs(p.documento), _newFiles: [],
     })
     setImgPreview(p.imagen || null)
-    setProvSearch(prov?.nombre || '')
-    setCreandoProv(false)
-    loadProvs(); setEditId(p.id); setModal(true)
+    setProvSearch(prov?.nombre || ''); setCreandoProv(false)
+    setEditId(p.id); setModal(true)
   }
 
+  // ── proveedor inline create ─────────────────────────────────────────────────
   async function crearProveedor() {
     if (!nuevoProv.nombre.trim()) return
     setSavingProv(true)
     const res    = await apiFetch('/api/proveedores', { method: 'POST', body: JSON.stringify(nuevoProv) })
     const creado = await res.json()
-    const lista  = await apiFetch('/api/proveedores').then(r => r.json())
-    setProveedores(lista)
+    await loadProvs()
     setForm(f => ({ ...f, proveedorId: creado.id }))
     setProvSearch(creado.nombre)
-    setCreandoProv(false); setNuevoProv({ nombre: '', pais: 'MX' })
-    setSavingProv(false)
+    setCreandoProv(false); setNuevoProv({ nombre: '', pais: 'MX' }); setSavingProv(false)
   }
 
+  // ── file handlers ───────────────────────────────────────────────────────────
   function onPickDocs(e) {
-    const files = Array.from(e.target.files)
-    if (!files.length) return
+    const files = Array.from(e.target.files); if (!files.length) return
     setForm(f => ({ ...f, _newFiles: [...f._newFiles, ...files] }))
     e.target.value = ''
   }
-  function removeNewFile(i) {
-    setForm(f => ({ ...f, _newFiles: f._newFiles.filter((_, idx) => idx !== i) }))
-  }
-  function removeSavedDoc(i) {
-    setForm(f => ({ ...f, docs: f.docs.filter((_, idx) => idx !== i) }))
-  }
-
-  async function onFile(e) {
+  function onFile(e) {
     const file = e.target.files[0]; if (!file) return
-    setImgPreview(URL.createObjectURL(file))
-    setForm(f => ({ ...f, _imgFile: file }))
+    setImgPreview(URL.createObjectURL(file)); setForm(f => ({ ...f, _imgFile: file }))
   }
 
+  // ── save ────────────────────────────────────────────────────────────────────
   async function save() {
     if (!form.proveedorId || !form.total) return
     setSaving(true)
-
     let imagenUrl = form.imagen
     if (form._imgFile) { try { imagenUrl = await subirImagen(form._imgFile) } catch {} }
-
-    // subir archivos nuevos
     const uploadedDocs = [...form.docs]
     for (const file of form._newFiles) {
       try {
-        const isImg = file.type.startsWith('image/')
-        const url = isImg ? await subirImagen(file) : await subirArchivo(file)
+        const url = file.type.startsWith('image/') ? await subirImagen(file) : await subirArchivo(file)
         uploadedDocs.push({ url, nombre: file.name })
       } catch {}
     }
-
     const body = {
-      proveedorId:  form.proveedorId,
-      total:        Number(form.total),
-      notas:        form.notas || null,
-      fechaPedido:  form.fechaPedido  || null,
-      fechaLlegada: form.fechaLlegada || null,
-      status:       form.status,
-      imagen:       imagenUrl ?? null,
-      documento:    uploadedDocs.length ? JSON.stringify(uploadedDocs) : null,
+      proveedorId: form.proveedorId, total: Number(form.total),
+      notas: form.notas || null,
+      fechaPedido: form.fechaPedido || null, fechaLlegada: form.fechaLlegada || null,
+      status: form.status, imagen: imagenUrl ?? null,
+      documento: uploadedDocs.length ? JSON.stringify(uploadedDocs) : null,
     }
-    const path = editId ? `/api/pedidos/${editId}` : '/api/pedidos'
-    await apiFetch(path, { method: editId ? 'PUT' : 'POST', body: JSON.stringify(body) })
-    setSaving(false); setModal(false); load()
+    await apiFetch(editId ? `/api/pedidos/${editId}` : '/api/pedidos',
+      { method: editId ? 'PUT' : 'POST', body: JSON.stringify(body) })
+    setSaving(false); setModal(false); fetchPedidos()
   }
 
   async function eliminar(id) {
     if (!confirm('¿Eliminar pedido?')) return
-    await apiFetch(`/api/pedidos/${id}`, { method: 'DELETE' }); load()
+    await apiFetch(`/api/pedidos/${id}`, { method: 'DELETE' }); fetchPedidos()
   }
 
-  function fmtFecha(f) {
-    if (!f) return '—'
-    const [y, m, d] = f.slice(0, 10).split('-').map(Number)
-    return new Date(y, m - 1, d).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })
-  }
-
-  const deudaTotal   = pedidos.filter(p => p.status === 'pendiente').reduce((s, p) => s + p.total, 0)
-  const filteredProv = proveedores.filter(p => p.nombre.toLowerCase().includes(provSearch.toLowerCase()))
+  // ── derived ─────────────────────────────────────────────────────────────────
+  const grupos = groupByMonth(pedidos)
+  const deudaTotal = pedidos.filter(p => p.status === 'pendiente').reduce((s, p) => s + p.total, 0)
+  const filteredProv = proveedores.filter(p =>
+    p.nombre.toLowerCase().includes(provSearch.toLowerCase()))
   const provSeleccionado = form.proveedorId ? proveedores.find(p => p.id === form.proveedorId) : null
 
+  // proveedores únicos para filtro
+  const provsUnicos = proveedores.slice().sort((a, b) => a.nombre.localeCompare(b.nombre))
+  const selectCls = `bg-[#0F0F13] border border-white/10 rounded-lg px-3 py-2
+                     text-white/60 text-xs font-montserrat focus:outline-none
+                     focus:border-pop-coral/40 cursor-pointer`
+
+  // ── render ───────────────────────────────────────────────────────────────────
   return (
     <div>
-      <div className="flex items-center justify-between mb-2">
-        <h1 className="font-anton text-white text-2xl tracking-widest">PEDIDOS</h1>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-1">
+        <div>
+          <h1 className="font-anton text-white text-2xl tracking-widest">PEDIDOS</h1>
+          <p className="font-montserrat text-white/25 text-xs">Compras a proveedores</p>
+        </div>
         <button onClick={openNew}
           className="bg-pop-coral text-white font-montserrat font-bold text-xs px-4 py-2 rounded-lg">
           + Nuevo
@@ -180,78 +235,144 @@ export default function Pedidos() {
       </div>
 
       {deudaTotal > 0 && (
-        <p className="font-montserrat text-yellow-400/70 text-xs mb-4">
+        <p className="font-montserrat text-yellow-400/60 text-xs mt-2 mb-1">
           Deuda pendiente: <span className="font-semibold">{fmt(deudaTotal)}</span>
         </p>
       )}
 
+      {/* Filtros */}
+      <div className="flex flex-wrap gap-2 mt-3 mb-5">
+        <select value={mesFiltro} onChange={e => setMesFiltro(e.target.value)} className={selectCls}>
+          <option value="">Todos los meses</option>
+          {MESES.map(m => <option key={m} value={m}>{mesLabel(m)}</option>)}
+        </select>
+
+        <select value={provFiltro} onChange={e => setProvFiltro(e.target.value)} className={selectCls}>
+          <option value="">Todos los proveedores</option>
+          {provsUnicos.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+        </select>
+
+        <select value={paisFiltro} onChange={e => setPaisFiltro(e.target.value)} className={selectCls}>
+          <option value="">Todos los países</option>
+          {['MX','US','CN','JP'].map(p => <option key={p} value={p}>{p}</option>)}
+        </select>
+      </div>
+
+      {/* Lista */}
       {loading ? (
         <p className="font-montserrat text-white/30 text-sm text-center py-12">Cargando…</p>
       ) : pedidos.length === 0 ? (
-        <p className="font-montserrat text-white/25 text-sm text-center py-12">Sin pedidos aún</p>
+        <p className="font-montserrat text-white/25 text-sm text-center py-12">Sin pedidos</p>
       ) : (
-        <div className="flex flex-col gap-2">
-          {pedidos.map(p => {
-            const prov = p.proveedor
-            const docs = parseDocs(p.documento)
-            return (
-              <div key={p.id} className="bg-[#1A1A24] border border-white/6 rounded-xl px-4 py-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      {prov?.pais && (
-                        <span className={`font-montserrat text-[10px] font-bold ${PAIS_COLOR[prov.pais] || ''}`}>
-                          {prov.pais}
-                        </span>
+        <div className="flex flex-col gap-6">
+          {grupos.map(([mes, items]) => (
+            <div key={mes}>
+              {/* Encabezado de mes */}
+              <p className="font-montserrat text-white/25 text-[10px] tracking-widest mb-2">
+                {mes === '__sin_fecha__' ? 'SIN FECHA' : mesLabel(mes)}
+              </p>
+
+              <div className="flex flex-col gap-1.5">
+                {items.map(p => {
+                  const prov = p.proveedor
+                  const docs = parseDocs(p.documento)
+                  const dia  = fmtDay(p.fechaPedido || p.fecha)
+
+                  return (
+                    <div key={p.id}
+                      className="bg-[#1A1A24] border border-white/6 rounded-xl px-4 py-3
+                                 flex items-center gap-3">
+
+                      {/* Fecha */}
+                      <div className="shrink-0 w-10 text-center">
+                        {dia ? (
+                          <>
+                            <p className="font-montserrat text-white/70 text-base font-bold leading-none">
+                              {dia.day}
+                            </p>
+                            <p className="font-montserrat text-white/25 text-[10px]">{dia.mon}</p>
+                          </>
+                        ) : (
+                          <p className="font-montserrat text-white/15 text-[10px]">—</p>
+                        )}
+                      </div>
+
+                      {/* Proveedor + notas + docs */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {prov?.pais && (
+                            <span className={`font-montserrat text-[9px] font-bold px-1.5 py-0.5
+                                             rounded border ${PAIS_BADGE[prov.pais] || ''}`}>
+                              {prov.pais}
+                            </span>
+                          )}
+                          <span className="font-montserrat text-white/80 text-sm font-medium">
+                            {prov?.nombre || '—'}
+                          </span>
+                          <span className={`font-montserrat text-[9px] px-1.5 py-0.5 rounded border
+                                           ${STATUS_CLS[p.status] || STATUS_CLS.pendiente}`}>
+                            {p.status}
+                          </span>
+                        </div>
+                        {p.notas && (
+                          <p className="font-montserrat text-white/30 text-xs truncate mt-0.5">{p.notas}</p>
+                        )}
+                        {docs.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mt-1">
+                            {docs.map((d, i) => (
+                              <a key={i} href={d.url} target="_blank" rel="noreferrer"
+                                className="font-montserrat text-[10px] text-pop-lav/50
+                                           hover:text-pop-lav flex items-center gap-1 transition-colors">
+                                <DocIcon nombre={d.nombre} />
+                                {d.nombre.length > 18 ? d.nombre.slice(0, 18) + '…' : d.nombre}
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Llegada + imagen */}
+                      <div className="shrink-0 text-right hidden sm:block">
+                        {p.fechaLlegada && (
+                          <>
+                            <p className="font-montserrat text-white/20 text-[9px]">Llega</p>
+                            <p className="font-montserrat text-white/40 text-xs">{fmtFecha(p.fechaLlegada)}</p>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Imagen miniatura */}
+                      {p.imagen && (
+                        <button onClick={() => setVerImg(p.imagen)}
+                          className="w-9 h-9 rounded-lg overflow-hidden border border-white/10 shrink-0">
+                          <img src={p.imagen} alt="ref" className="w-full h-full object-cover" />
+                        </button>
                       )}
-                      <p className="font-montserrat text-white/80 text-sm font-medium">{prov?.nombre || '—'}</p>
-                      <span className={`font-montserrat text-xs px-2 py-0.5 rounded-full ${STATUS[p.status] || STATUS.pendiente}`}>
-                        {p.status}
-                      </span>
-                    </div>
-                    <p className="font-montserrat text-white/30 text-xs">
-                      {p.fechaPedido && `Pedido: ${fmtFecha(p.fechaPedido)} · `}
-                      Llega: {fmtFecha(p.fechaLlegada)}
-                      {p.notas && ` · ${p.notas}`}
-                    </p>
-                    {docs.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mt-1.5">
-                        {docs.map((d, i) => (
-                          <a key={i} href={d.url} target="_blank" rel="noreferrer"
-                            className="font-montserrat text-[10px] text-pop-lav/60 hover:text-pop-lav
-                                       flex items-center gap-1 transition-colors">
-                            <DocIcon nombre={d.nombre} />
-                            {d.nombre.length > 20 ? d.nombre.slice(0, 20) + '…' : d.nombre}
-                          </a>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-start gap-2 flex-shrink-0">
-                    {p.imagen && (
-                      <button onClick={() => setVerImg(p.imagen)}
-                        className="w-10 h-10 rounded-lg overflow-hidden border border-white/10 flex-shrink-0">
-                        <img src={p.imagen} alt="ref" className="w-full h-full object-cover" />
-                      </button>
-                    )}
-                    <div className="text-right">
-                      <p className="font-anton text-white text-lg">{fmt(p.total)}</p>
-                      <div className="flex gap-2 justify-end">
-                        <button onClick={() => openEdit(p)}
-                          className="font-montserrat text-xs text-pop-lav hover:text-white transition-colors">editar</button>
-                        <button onClick={() => eliminar(p.id)}
-                          className="font-montserrat text-xs text-white/15 hover:text-red-400 transition-colors">borrar</button>
+
+                      {/* Total + acciones */}
+                      <div className="shrink-0 text-right">
+                        <p className="font-anton text-white text-base">{fmt(p.total)}</p>
+                        <div className="flex gap-2 justify-end">
+                          <button onClick={() => openEdit(p)}
+                            className="font-montserrat text-[10px] text-pop-lav hover:text-white transition-colors">
+                            editar
+                          </button>
+                          <button onClick={() => eliminar(p.id)}
+                            className="font-montserrat text-[10px] text-white/15 hover:text-red-400 transition-colors">
+                            borrar
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </div>
+                  )
+                })}
               </div>
-            )
-          })}
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Modal */}
+      {/* ── Modal ─────────────────────────────────────────────────────────────── */}
       {modal && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end md:justify-center md:items-center bg-black/70 backdrop-blur-sm">
           <div className="absolute inset-0" onClick={() => setModal(false)} />
@@ -285,7 +406,7 @@ export default function Pedidos() {
                         </span>
                         <span className="font-montserrat text-white/80 text-sm flex-1">{provSeleccionado.nombre}</span>
                         <button onClick={() => { setForm(f => ({ ...f, proveedorId: null })); setProvSearch('') }}
-                          className="text-white/25 hover:text-white/60 transition-colors text-xs">✕</button>
+                          className="text-white/25 hover:text-white/60 text-xs">✕</button>
                       </div>
                     ) : (
                       <>
@@ -382,7 +503,7 @@ export default function Pedidos() {
                 </div>
               )}
 
-              {/* Documentos múltiples */}
+              {/* Documentos */}
               <div>
                 <label className="font-montserrat text-white/40 text-xs mb-1 block">
                   Documentos <span className="text-white/20">(PDF, CSV, imágenes — varios)</span>
@@ -390,8 +511,6 @@ export default function Pedidos() {
                 <input ref={docRef} type="file" multiple
                   accept=".pdf,.csv,.doc,.docx,.xls,.xlsx,image/*"
                   onChange={onPickDocs} className="hidden" />
-
-                {/* Documentos ya guardados */}
                 {form.docs.map((d, i) => (
                   <div key={i} className="flex items-center gap-2 bg-[#0F0F13] border border-white/8
                                           rounded-lg px-3 py-2 mb-1.5">
@@ -400,22 +519,19 @@ export default function Pedidos() {
                       className="font-montserrat text-white/50 text-xs flex-1 truncate hover:text-white/80 transition-colors">
                       {d.nombre}
                     </a>
-                    <button onClick={() => removeSavedDoc(i)}
-                      className="text-white/20 hover:text-red-400 text-xs transition-colors flex-shrink-0">✕</button>
+                    <button onClick={() => setForm(f => ({ ...f, docs: f.docs.filter((_, idx) => idx !== i) }))}
+                      className="text-white/20 hover:text-red-400 text-xs transition-colors">✕</button>
                   </div>
                 ))}
-
-                {/* Archivos nuevos seleccionados (aún no subidos) */}
                 {form._newFiles.map((f, i) => (
                   <div key={i} className="flex items-center gap-2 bg-[#0F0F13] border border-emerald-500/20
                                           rounded-lg px-3 py-2 mb-1.5">
                     <span className="text-emerald-400/60 flex-shrink-0"><DocIcon nombre={f.name} /></span>
                     <span className="font-montserrat text-white/40 text-xs flex-1 truncate">{f.name}</span>
-                    <button onClick={() => removeNewFile(i)}
-                      className="text-white/20 hover:text-red-400 text-xs transition-colors flex-shrink-0">✕</button>
+                    <button onClick={() => setForm(fm => ({ ...fm, _newFiles: fm._newFiles.filter((_, idx) => idx !== i) }))}
+                      className="text-white/20 hover:text-red-400 text-xs transition-colors">✕</button>
                   </div>
                 ))}
-
                 <button onClick={() => docRef.current.click()}
                   className="w-full border border-dashed border-white/15 rounded-lg py-3
                              text-white/25 font-montserrat text-xs hover:border-white/30
@@ -428,7 +544,7 @@ export default function Pedidos() {
                 </button>
               </div>
 
-              {/* Imagen de referencia */}
+              {/* Imagen */}
               <div>
                 <label className="font-montserrat text-white/40 text-xs mb-1 block">Imagen de referencia</label>
                 <input ref={fileRef} type="file" accept="image/*" capture="environment"
@@ -437,8 +553,7 @@ export default function Pedidos() {
                   <div className="relative">
                     <img src={imgPreview} alt="preview"
                       className="w-full rounded-lg max-h-48 object-contain bg-black/30" />
-                    <button
-                      onClick={() => { setImgPreview(null); setForm(f => ({ ...f, imagen: null, _imgFile: null })) }}
+                    <button onClick={() => { setImgPreview(null); setForm(f => ({ ...f, imagen: null, _imgFile: null })) }}
                       className="absolute top-2 right-2 bg-black/60 text-white/60 hover:text-white
                                  rounded-full w-7 h-7 flex items-center justify-center text-xs">✕</button>
                   </div>
@@ -450,8 +565,7 @@ export default function Pedidos() {
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
                          fill="none" stroke="currentColor" strokeWidth="1.5">
                       <rect x="3" y="3" width="18" height="18" rx="2"/>
-                      <circle cx="8.5" cy="8.5" r="1.5"/>
-                      <polyline points="21 15 16 10 5 21"/>
+                      <circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
                     </svg>
                     Toca para agregar foto
                   </button>

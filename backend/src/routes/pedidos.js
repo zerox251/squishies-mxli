@@ -5,8 +5,26 @@ const prisma = require('../lib/prisma')
 const includeProveedor = { proveedor: true }
 
 router.get('/', async (req, res) => {
+  const { mes, proveedorId, pais } = req.query
+  const where = {}
+
+  if (mes) {
+    const [y, m] = mes.split('-').map(Number)
+    where.fechaPedido = {
+      gte: new Date(y, m - 1, 1),
+      lt:  new Date(y, m, 1),
+    }
+  }
+  if (proveedorId) {
+    where.proveedorId = Number(proveedorId)
+  }
+  if (pais) {
+    where.proveedor = { pais }
+  }
+
   const pedidos = await prisma.pedido.findMany({
-    orderBy: { fecha: 'desc' },
+    where,
+    orderBy: { fechaPedido: 'desc' },
     include: includeProveedor,
   })
   res.json(pedidos)
