@@ -109,13 +109,26 @@ export default function Pedidos() {
 
   // proveedor selector (modal)
   const [proveedores,  setProveedores]  = useState([])
-  const [provSearch,   setProvSearch]   = useState('')
+  const [provOpen,     setProvOpen]     = useState(false)
   const [creandoProv,  setCreandoProv]  = useState(false)
   const [nuevoProv,    setNuevoProv]    = useState({ nombre: '', pais: 'MX' })
   const [savingProv,   setSavingProv]   = useState(false)
+  const provDropRef = useRef()
 
   const fileRef = useRef()
   const docRef  = useRef()
+
+  // cerrar dropdown al click fuera
+  useEffect(() => {
+    if (!provOpen) return
+    function handler(e) {
+      if (provDropRef.current && !provDropRef.current.contains(e.target)) {
+        setProvOpen(false); setCreandoProv(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [provOpen])
 
   const fetchPedidos = useCallback(() => {
     setLoading(true)
@@ -136,7 +149,7 @@ export default function Pedidos() {
   // ── modal open ──────────────────────────────────────────────────────────────
   function openNew() {
     setForm({ ...EMPTY }); setEditId(null); setImgPreview(null)
-    setProvSearch(''); setCreandoProv(false); setNuevoProv({ nombre: '', pais: 'MX' })
+    setProvOpen(false); setCreandoProv(false); setNuevoProv({ nombre: '', pais: 'MX' })
     setModal(true)
   }
   function openEdit(p) {
@@ -149,7 +162,7 @@ export default function Pedidos() {
       docs: parseDocs(p.documento), _newFiles: [],
     })
     setImgPreview(p.imagen || null)
-    setProvSearch(prov?.nombre || ''); setCreandoProv(false)
+    setProvOpen(false); setCreandoProv(false)
     setEditId(p.id); setModal(true)
   }
 
@@ -161,8 +174,7 @@ export default function Pedidos() {
     const creado = await res.json()
     await loadProvs()
     setForm(f => ({ ...f, proveedorId: creado.id }))
-    setProvSearch(creado.nombre)
-    setCreandoProv(false); setNuevoProv({ nombre: '', pais: 'MX' }); setSavingProv(false)
+    setCreandoProv(false); setProvOpen(false); setNuevoProv({ nombre: '', pais: 'MX' }); setSavingProv(false)
   }
 
   // ── file handlers ───────────────────────────────────────────────────────────
@@ -209,8 +221,6 @@ export default function Pedidos() {
   // ── derived ─────────────────────────────────────────────────────────────────
   const grupos = groupByMonth(pedidos)
   const deudaTotal = pedidos.filter(p => p.status === 'pendiente').reduce((s, p) => s + p.total, 0)
-  const filteredProv = proveedores.filter(p =>
-    p.nombre.toLowerCase().includes(provSearch.toLowerCase()))
   const provSeleccionado = form.proveedorId ? proveedores.find(p => p.id === form.proveedorId) : null
 
   // proveedores únicos para filtro
@@ -394,80 +404,115 @@ export default function Pedidos() {
 
             <div className="overflow-y-auto px-5 py-4 flex flex-col gap-3 flex-1">
 
-              {/* Proveedor */}
-              <div>
+              {/* Proveedor — dropdown clásico */}
+              <div className="relative" ref={provDropRef}>
                 <label className="font-montserrat text-white/40 text-xs mb-1 block">Proveedor</label>
-                {!creandoProv ? (
-                  <>
-                    {provSeleccionado ? (
-                      <div className="flex items-center gap-2 bg-[#0F0F13] border border-emerald-500/30 rounded-lg px-3 py-2.5">
-                        <span className={`font-montserrat text-[10px] font-bold ${PAIS_COLOR[provSeleccionado.pais] || ''}`}>
-                          {provSeleccionado.pais}
-                        </span>
-                        <span className="font-montserrat text-white/80 text-sm flex-1">{provSeleccionado.nombre}</span>
-                        <button onClick={() => { setForm(f => ({ ...f, proveedorId: null })); setProvSearch('') }}
-                          className="text-white/25 hover:text-white/60 text-xs">✕</button>
-                      </div>
-                    ) : (
-                      <>
-                        <input type="text" value={provSearch} placeholder="Buscar proveedor…"
-                          onChange={e => setProvSearch(e.target.value)}
-                          className="w-full bg-[#0F0F13] border border-white/10 rounded-lg px-3 py-2.5
-                                     text-white text-sm font-montserrat placeholder-white/20
-                                     focus:outline-none focus:border-pop-coral/50" />
-                        {provSearch.trim() && (
-                          <div className="border border-white/8 rounded-lg mt-1 max-h-36 overflow-y-auto">
-                            {filteredProv.map(p => (
-                              <button key={p.id}
-                                onClick={() => { setForm(f => ({ ...f, proveedorId: p.id })); setProvSearch(p.nombre) }}
-                                className="w-full text-left px-3 py-2 font-montserrat text-sm
-                                           border-b border-white/5 last:border-0 text-white/60 hover:bg-white/5 transition-colors">
-                                <span className={`text-[10px] font-bold mr-2 ${PAIS_COLOR[p.pais] || ''}`}>{p.pais}</span>
-                                {p.nombre}
-                              </button>
-                            ))}
-                            {filteredProv.length === 0 && (
-                              <p className="px-3 py-2 font-montserrat text-white/25 text-xs">Sin resultados</p>
-                            )}
-                          </div>
-                        )}
-                      </>
-                    )}
-                    <button onClick={() => { setCreandoProv(true); setNuevoProv({ nombre: provSearch, pais: 'MX' }) }}
-                      className="mt-1.5 w-full border border-dashed border-white/15 hover:border-emerald-500/40
-                                 text-white/30 hover:text-emerald-400/70 font-montserrat text-xs
-                                 py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1">
-                      <span className="text-sm leading-none">+</span> Crear nuevo proveedor
-                    </button>
-                  </>
-                ) : (
-                  <div className="border border-white/8 rounded-lg p-3 flex flex-col gap-2">
-                    <div className="flex gap-2">
-                      {['MX','US','CN','JP'].map(p => (
-                        <button key={p} onClick={() => setNuevoProv(f => ({ ...f, pais: p }))}
-                          className={`flex-1 py-1.5 rounded text-[10px] font-montserrat font-bold border transition-colors
-                                      ${nuevoProv.pais === p
-                                        ? { MX:'border-green-500/40 bg-green-500/10 text-green-400', US:'border-blue-500/40 bg-blue-500/10 text-blue-400', CN:'border-red-500/40 bg-red-500/10 text-red-400', JP:'border-pink-500/40 bg-pink-500/10 text-pink-400' }[p]
-                                        : 'border-white/8 text-white/25'}`}>
-                          {p}
+
+                {/* Trigger */}
+                <button type="button"
+                  onClick={() => { setProvOpen(o => !o); setCreandoProv(false) }}
+                  className={`w-full flex items-center justify-between gap-2 bg-[#0F0F13]
+                              border rounded-lg px-3 py-2.5 text-sm font-montserrat text-left
+                              focus:outline-none transition-colors
+                              ${provOpen ? 'border-pop-coral/50' : 'border-white/10'}`}>
+                  {provSeleccionado ? (
+                    <span className="flex items-center gap-2">
+                      <span className={`text-[10px] font-bold ${PAIS_COLOR[provSeleccionado.pais] || ''}`}>
+                        {provSeleccionado.pais}
+                      </span>
+                      <span className="text-white/80">{provSeleccionado.nombre}</span>
+                    </span>
+                  ) : (
+                    <span className="text-white/25">Seleccionar proveedor…</span>
+                  )}
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                       fill="none" stroke="currentColor" strokeWidth="2"
+                       className={`text-white/30 flex-shrink-0 transition-transform ${provOpen ? 'rotate-180' : ''}`}>
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </button>
+
+                {/* Dropdown panel */}
+                {provOpen && (
+                  <div className="absolute left-0 right-0 top-full mt-1 z-30
+                                  bg-[#14141c] border border-white/10 rounded-xl
+                                  shadow-2xl overflow-hidden">
+
+                    {/* Lista de proveedores */}
+                    <div className="max-h-44 overflow-y-auto">
+                      {proveedores.length === 0 && (
+                        <p className="px-3 py-3 font-montserrat text-white/25 text-xs text-center">
+                          Sin proveedores — crea uno abajo
+                        </p>
+                      )}
+                      {proveedores.map(p => (
+                        <button key={p.id} type="button"
+                          onClick={() => { setForm(f => ({ ...f, proveedorId: p.id })); setProvOpen(false); setCreandoProv(false) }}
+                          className={`w-full text-left px-4 py-2.5 font-montserrat text-sm
+                                      border-b border-white/5 last:border-0 transition-colors flex items-center gap-2
+                                      ${form.proveedorId === p.id
+                                        ? 'bg-white/8 text-white'
+                                        : 'text-white/60 hover:bg-white/5'}`}>
+                          <span className={`text-[10px] font-bold w-6 flex-shrink-0 ${PAIS_COLOR[p.pais] || ''}`}>{p.pais}</span>
+                          {p.nombre}
+                          {form.proveedorId === p.id && (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" strokeWidth="2.5" className="ml-auto text-emerald-400">
+                              <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                          )}
                         </button>
                       ))}
                     </div>
-                    <input type="text" value={nuevoProv.nombre} placeholder="Nombre del proveedor…"
-                      autoFocus onChange={e => setNuevoProv(f => ({ ...f, nombre: e.target.value }))}
-                      className="w-full bg-[#0F0F13] border border-white/10 rounded-lg px-3 py-2
-                                 text-white text-sm font-montserrat placeholder-white/20
-                                 focus:outline-none focus:border-emerald-500/40" />
-                    <div className="flex gap-2">
-                      <button onClick={() => setCreandoProv(false)}
-                        className="flex-1 border border-white/10 text-white/35 font-montserrat text-xs py-1.5 rounded-lg">
-                        ← Volver
-                      </button>
-                      <button onClick={crearProveedor} disabled={savingProv || !nuevoProv.nombre.trim()}
-                        className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-montserrat font-bold
-                                   text-xs py-1.5 rounded-lg disabled:opacity-40 transition-colors">
-                        {savingProv ? 'Creando…' : 'Crear'}
-                      </button>
+
+                    {/* Separador + crear nuevo */}
+                    <div className="border-t border-white/8">
+                      {!creandoProv ? (
+                        <button type="button"
+                          onClick={() => setCreandoProv(true)}
+                          className="w-full text-left px-4 py-2.5 font-montserrat text-xs
+                                     text-emerald-400/70 hover:text-emerald-400 hover:bg-emerald-500/5
+                                     transition-colors flex items-center gap-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                               fill="none" stroke="currentColor" strokeWidth="2">
+                            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                          </svg>
+                          Crear nuevo proveedor
+                        </button>
+                      ) : (
+                        <div className="px-4 py-3 flex flex-col gap-2">
+                          <div className="flex gap-1.5">
+                            {['MX','US','CN','JP'].map(p => (
+                              <button key={p} type="button"
+                                onClick={() => setNuevoProv(f => ({ ...f, pais: p }))}
+                                className={`flex-1 py-1.5 rounded text-[10px] font-montserrat font-bold border transition-colors
+                                            ${nuevoProv.pais === p
+                                              ? { MX:'border-green-500/40 bg-green-500/10 text-green-400', US:'border-blue-500/40 bg-blue-500/10 text-blue-400', CN:'border-red-500/40 bg-red-500/10 text-red-400', JP:'border-pink-500/40 bg-pink-500/10 text-pink-400' }[p]
+                                              : 'border-white/8 text-white/25'}`}>
+                                {p}
+                              </button>
+                            ))}
+                          </div>
+                          <input type="text" value={nuevoProv.nombre} placeholder="Nombre del proveedor…"
+                            autoFocus onChange={e => setNuevoProv(f => ({ ...f, nombre: e.target.value }))}
+                            onKeyDown={e => e.key === 'Enter' && crearProveedor()}
+                            className="w-full bg-[#0F0F13] border border-white/10 rounded-lg px-3 py-2
+                                       text-white text-sm font-montserrat placeholder-white/20
+                                       focus:outline-none focus:border-emerald-500/40" />
+                          <div className="flex gap-2">
+                            <button type="button" onClick={() => setCreandoProv(false)}
+                              className="flex-1 border border-white/10 text-white/35 font-montserrat text-xs py-1.5 rounded-lg">
+                              Cancelar
+                            </button>
+                            <button type="button" onClick={crearProveedor}
+                              disabled={savingProv || !nuevoProv.nombre.trim()}
+                              className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-montserrat
+                                         font-bold text-xs py-1.5 rounded-lg disabled:opacity-40 transition-colors">
+                              {savingProv ? 'Creando…' : 'Crear'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -491,17 +536,23 @@ export default function Pedidos() {
                 </div>
               ))}
 
-              {editId && (
-                <div>
-                  <label className="font-montserrat text-white/40 text-xs mb-1 block">Status</label>
-                  <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
-                    className="w-full bg-[#0F0F13] border border-white/10 rounded-lg px-3 py-3
-                               text-white text-sm font-montserrat focus:outline-none">
-                    <option value="pendiente">Pendiente</option>
-                    <option value="pagado">Pagado</option>
-                  </select>
+              {/* Status — siempre visible */}
+              <div>
+                <label className="font-montserrat text-white/40 text-xs mb-1 block">Status del pago</label>
+                <div className="flex gap-2">
+                  {[
+                    { val: 'pendiente', label: 'Pendiente', cls: 'border-yellow-500/40 bg-yellow-500/10 text-yellow-400' },
+                    { val: 'pagado',    label: 'Pagado',    cls: 'border-green-500/40 bg-green-500/10 text-green-400'  },
+                  ].map(({ val, label, cls }) => (
+                    <button key={val} type="button"
+                      onClick={() => setForm(f => ({ ...f, status: val }))}
+                      className={`flex-1 py-2.5 rounded-lg text-xs font-montserrat font-bold border transition-colors
+                                  ${form.status === val ? cls : 'border-white/8 text-white/25 hover:border-white/20'}`}>
+                      {label}
+                    </button>
+                  ))}
                 </div>
-              )}
+              </div>
 
               {/* Documentos */}
               <div>
