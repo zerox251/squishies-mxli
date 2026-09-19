@@ -6,6 +6,10 @@
 
 * { -webkit-tap-highlight-color: transparent; }
 
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; }
+
 body {
   background-color: #0F0F13;
   color: white;
