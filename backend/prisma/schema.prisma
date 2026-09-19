@@ -50,11 +50,12 @@ model VentaItem {
 }
 
 model Pedido {
-  id           Int       @id @default(autoincrement())
-  fecha        DateTime  @default(now())
-  proveedor    String
+  id           Int        @id @default(autoincrement())
+  fecha        DateTime   @default(now())
+  proveedorId  Int?
+  proveedor    Proveedor? @relation(fields: [proveedorId], references: [id])
   total        Float
-  status       String    @default("pendiente")
+  status       String     @default("pendiente")
   notas        String?
   fechaPedido  DateTime?
   fechaLlegada DateTime?
@@ -92,6 +93,7 @@ model Proveedor {
   email     String?
   notas     String?
   creadoEn  DateTime @default(now())
+  pedidos   Pedido[]
 }
 
 model BazarItem {
