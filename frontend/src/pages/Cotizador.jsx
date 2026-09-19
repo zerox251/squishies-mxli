@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
 const fmt = n => isNaN(n) || !isFinite(n) ? '—' : '$' + Number(n).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
@@ -71,9 +73,104 @@ export default function Cotizador() {
   const totalIngreso  = calcs.reduce((s, r) => s + r.precioPublico * r.totalUnidades, 0)
   const totalGanancia = totalIngreso - costoReal
 
+  function exportCSV() {
+    const header = ['#', 'Producto', 'Pzas/paq', 'Paquetes', 'Precio', 'Divisa', 'Costo/u (MXN)', 'P.público (MXN)', 'Inversión real (MXN)', 'Ganancia total (MXN)']
+    const rows = calcs.filter(r => r.totalUnidades > 0).map((r, i) => [
+      i + 1, r.nombre || '—', r.piezas, r.paquetes, r.precio, r.divisa,
+      r.costoUnit.toFixed(2), r.precioPublico.toFixed(2),
+      (r.inversionReal ?? r.inversion).toFixed(2), r.gananciaTotal.toFixed(2),
+    ])
+    const ajustes = [
+      [], ['AJUSTES'], ['Subtotal productos', subtotalProductos.toFixed(2)],
+      ...(ajDescuento > 0 ? [['Descuento', `-${ajDescuento.toFixed(2)}`]] : []),
+      ...(ajEnvio     > 0 ? [['Envío',     `+${ajEnvio.toFixed(2)}`]]     : []),
+      ...(ajImpuesto  > 0 ? [['Imp. importación', `+${ajImpuesto.toFixed(2)}`]] : []),
+      ['Costo real', costoReal.toFixed(2)],
+      ['Ingreso esperado', totalIngreso.toFixed(2)],
+      ['Ganancia bruta', totalGanancia.toFixed(2)],
+      [`ROI`, costoReal > 0 ? `${((totalGanancia / costoReal) * 100).toFixed(1)}%` : '—'],
+    ]
+    const csv = [header, ...rows, ...ajustes]
+      .map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(','))
+      .join('\n')
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `Cotizacion-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+  }
+
+  function exportPDF() {
+    const doc = new jsPDF({ orientation: 'landscape' })
+    const fecha = new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })
+
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(16)
+    doc.text('COTIZADOR', 14, 16)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9)
+    doc.text(`Margen: ${margen}%   TC USD→MXN: ${tc}   Fecha: ${fecha}`, 14, 23)
+
+    const productRows = calcs.filter(r => r.totalUnidades > 0).map((r, i) => [
+      i + 1, r.nombre || '—', r.piezas, r.paquetes,
+      `${r.precio} ${r.divisa}`,
+      `$${r.costoUnit.toFixed(2)}`,
+      `$${r.precioPublico.toFixed(2)}`,
+      `$${(r.inversionReal ?? r.inversion).toFixed(2)}`,
+      `$${r.gananciaTotal.toFixed(2)}`,
+    ])
+
+    autoTable(doc, {
+      startY: 28,
+      head: [['#', 'Producto', 'Pzas/paq', 'Paquetes', 'Precio', 'Costo/u', 'P.público', 'Inversión', 'Ganancia']],
+      body: productRows,
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [30, 30, 40], textColor: 255 },
+      alternateRowStyles: { fillColor: [245, 245, 250] },
+    })
+
+    const finalY = doc.lastAutoTable.finalY + 8
+    const resumenRows = [
+      ['Subtotal productos', `$${subtotalProductos.toFixed(2)}`],
+      ...(ajDescuento > 0 ? [['Descuento', `- $${ajDescuento.toFixed(2)}`]] : []),
+      ...(ajEnvio     > 0 ? [['Envío',     `+ $${ajEnvio.toFixed(2)}`]]     : []),
+      ...(ajImpuesto  > 0 ? [['Imp. importación', `+ $${ajImpuesto.toFixed(2)}`]] : []),
+      ['Costo real', `$${costoReal.toFixed(2)}`],
+      ['Ingreso esperado', `$${totalIngreso.toFixed(2)}`],
+      ['Ganancia bruta', `$${totalGanancia.toFixed(2)}`],
+      ['ROI', costoReal > 0 ? `${((totalGanancia / costoReal) * 100).toFixed(1)}%` : '—'],
+    ]
+
+    autoTable(doc, {
+      startY: finalY,
+      head: [['Resumen', 'Monto']],
+      body: resumenRows,
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [30, 30, 40], textColor: 255 },
+      columnStyles: { 1: { halign: 'right' } },
+      tableWidth: 80,
+    })
+
+    doc.save(`Cotizacion-${new Date().toISOString().slice(0, 10)}.pdf`)
+  }
+
   return (
     <div>
-      <h1 className="font-anton text-white text-2xl tracking-widest mb-1">COTIZADOR</h1>
+      <div className="flex items-start justify-between mb-1 gap-3">
+        <h1 className="font-anton text-white text-2xl tracking-widest">COTIZADOR</h1>
+        <div className="flex gap-2 flex-shrink-0">
+          <button onClick={exportCSV}
+            className="font-montserrat text-xs px-3 py-1.5 rounded-lg border border-white/15
+                       text-white/40 hover:text-white/70 hover:border-white/30 transition-colors">
+            CSV
+          </button>
+          <button onClick={exportPDF}
+            className="font-montserrat text-xs px-3 py-1.5 rounded-lg border border-pop-coral/40
+                       text-pop-coral/70 hover:text-pop-coral hover:border-pop-coral/70 transition-colors">
+            PDF
+          </button>
+        </div>
+      </div>
       <p className="font-montserrat text-white/30 text-xs mb-4">Precio público = Costo × (1 + Margen%)</p>
 
       {/* Config bar */}
