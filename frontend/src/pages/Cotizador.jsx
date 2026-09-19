@@ -626,9 +626,10 @@ export default function Cotizador() {
                 {/* Crear nuevo */}
                 <button
                   onClick={() => { setCreatingNew(true); setNewNombre(vincularRow.nombre || squishySearch); setNewDescripcion('') }}
-                  className="font-montserrat text-xs text-white/25 hover:text-emerald-400/70
-                             transition-colors flex items-center gap-1 mb-4">
-                  <span className="text-base leading-none">+</span> Crear nuevo producto
+                  className="w-full border border-dashed border-white/15 hover:border-emerald-500/40
+                             text-white/35 hover:text-emerald-400/70 font-montserrat text-xs
+                             py-2 rounded-lg transition-colors flex items-center justify-center gap-1 mb-4">
+                  <span className="text-sm leading-none">+</span> Crear nuevo producto
                 </button>
 
                 <div className="flex gap-2">
