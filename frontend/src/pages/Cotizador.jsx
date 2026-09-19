@@ -120,6 +120,48 @@ export default function Cotizador() {
   const totalIngreso  = calcs.reduce((s, r) => s + r.precioPublico * r.totalUnidades, 0)
   const totalGanancia = totalIngreso - costoReal
 
+  function parseCSVLine(line) {
+    const result = []
+    let cur = ''
+    let inQ = false
+    for (let i = 0; i < line.length; i++) {
+      if (line[i] === '"') {
+        if (inQ && line[i + 1] === '"') { cur += '"'; i++ }
+        else inQ = !inQ
+      } else if (line[i] === ',' && !inQ) { result.push(cur); cur = '' }
+      else cur += line[i]
+    }
+    result.push(cur)
+    return result
+  }
+
+  function importCSV() {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.csv'
+    input.onchange = e => {
+      const file = e.target.files[0]
+      if (!file) return
+      const reader = new FileReader()
+      reader.onload = ev => {
+        let text = ev.target.result
+        if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1)
+        const lines = text.split('\n').map(l => l.trim()).filter(Boolean)
+        const imported = []
+        let id = 1
+        for (const line of lines.slice(1)) {
+          const cols = parseCSVLine(line)
+          if (!cols[0] || isNaN(Number(cols[0]))) break
+          const [, nombre, piezas, paquetes, precio, divisa] = cols
+          imported.push({ id: id++, nombre, piezas, paquetes, precio, divisa: divisa || 'MXN' })
+        }
+        if (imported.length > 0) { setRows(imported); setNextId(id) }
+      }
+      reader.readAsText(file, 'utf-8')
+    }
+    input.click()
+  }
+
   function exportCSV() {
     const header = ['#', 'Producto', 'Pzas/paq', 'Paquetes', 'Precio', 'Divisa', 'Costo/u (MXN)', 'P.público (MXN)', 'Ajuste (MXN)', 'Total (MXN)']
     const rows = calcs.filter(r => r.totalUnidades > 0).map((r, i) => {
@@ -216,6 +258,11 @@ export default function Cotizador() {
       <div className="flex items-start justify-between mb-1 gap-3">
         <h1 className="font-anton text-white text-2xl tracking-widest">COTIZADOR</h1>
         <div className="flex gap-2 flex-shrink-0">
+          <button onClick={importCSV}
+            className="font-montserrat text-xs px-3 py-1.5 rounded-lg border border-white/10
+                       text-white/30 hover:text-white/60 hover:border-white/25 transition-colors">
+            ↑ Importar
+          </button>
           <button onClick={exportCSV}
             className="font-montserrat text-xs px-3 py-1.5 rounded-lg border border-white/15
                        text-white/40 hover:text-white/70 hover:border-white/30 transition-colors">
