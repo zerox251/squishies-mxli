@@ -50,6 +50,7 @@ export default function Cotizador() {
   const [creatingNew,     setCreatingNew]     = useState(false)
   const [newNombre,       setNewNombre]       = useState('')
   const [newDescripcion,  setNewDescripcion]  = useState('')
+  const [newPrecio,       setNewPrecio]       = useState('')
   const [saving,          setSaving]          = useState(false)
 
   function removeRow(id) { setRows(r => r.filter(x => x.id !== id)) }
@@ -63,6 +64,7 @@ export default function Cotizador() {
     setCreatingNew(false)
     setNewNombre('')
     setNewDescripcion('')
+    setNewPrecio(rowCalc.precioPublico.toFixed(2))
     apiFetch('/api/productos').then(r => r.json()).then(setSquishies)
   }
 
@@ -70,13 +72,14 @@ export default function Cotizador() {
     if (!vincularRow) return
     setSaving(true)
     try {
+      const precioFinal = Number(newPrecio) || vincularRow.precioPublico
       if (creatingNew) {
         await apiFetch('/api/productos', {
           method: 'POST',
           body: JSON.stringify({
             nombre: newNombre.trim(),
             descripcion: newDescripcion.trim() || null,
-            precio: vincularRow.precioPublico,
+            precio: precioFinal,
             costo: vincularRow.costoUnit,
             stock: vincularRow.totalUnidades || 0,
           }),
@@ -85,7 +88,7 @@ export default function Cotizador() {
         if (!squishyId) return
         await apiFetch(`/api/productos/${squishyId}`, {
           method: 'PUT',
-          body: JSON.stringify({ costo: vincularRow.costoUnit, precio: vincularRow.precioPublico }),
+          body: JSON.stringify({ costo: vincularRow.costoUnit, precio: precioFinal }),
         })
       }
     } catch {}
@@ -569,16 +572,26 @@ export default function Cotizador() {
             </div>
 
             {/* Info del producto */}
-            <div className="bg-[#0F0F13] border border-white/6 rounded-lg px-3 py-2.5 mb-4 flex gap-4 flex-wrap">
-              <span className="font-montserrat text-white/50 text-xs font-medium">
-                {vincularRow.nombre || '—'}
-              </span>
-              <span className="font-montserrat text-white/25 text-xs">
-                Costo/u <span className="text-white/50">{fmt(vincularRow.costoUnit)}</span>
-              </span>
-              <span className="font-montserrat text-white/25 text-xs">
-                P.público <span className="text-pop-rose">{fmt(vincularRow.precioPublico)}</span>
-              </span>
+            <div className="bg-[#0F0F13] border border-white/6 rounded-lg px-3 py-2.5 mb-4">
+              <div className="flex gap-4 flex-wrap items-center">
+                <span className="font-montserrat text-white/50 text-xs font-medium">
+                  {vincularRow.nombre || '—'}
+                </span>
+                <span className="font-montserrat text-white/25 text-xs">
+                  Costo/u <span className="text-white/50">{fmt(vincularRow.costoUnit)}</span>
+                </span>
+              </div>
+              <div className="flex items-center gap-2 mt-2">
+                <label className="font-montserrat text-white/30 text-[10px] flex-shrink-0">Precio final</label>
+                <input
+                  type="number"
+                  value={newPrecio}
+                  onChange={e => setNewPrecio(e.target.value)}
+                  className="flex-1 bg-[#1A1A24] border border-pop-rose/30 rounded-lg px-2 py-1
+                             text-pop-rose text-sm font-montserrat text-center
+                             focus:outline-none focus:border-pop-rose/60"
+                />
+              </div>
             </div>
 
             {!creatingNew ? (
@@ -678,7 +691,7 @@ export default function Cotizador() {
 
                 <div className="bg-[#0F0F13] border border-white/6 rounded-lg px-3 py-2 mb-4 flex gap-4 flex-wrap">
                   <span className="font-montserrat text-white/25 text-xs">Costo <span className="text-white/50">{fmt(vincularRow.costoUnit)}</span></span>
-                  <span className="font-montserrat text-white/25 text-xs">Precio <span className="text-pop-rose">{fmt(vincularRow.precioPublico)}</span></span>
+                  <span className="font-montserrat text-white/25 text-xs">Precio <span className="text-pop-rose">{fmt(Number(newPrecio) || vincularRow.precioPublico)}</span></span>
                   <span className="font-montserrat text-white/25 text-xs">Stock <span className="text-white/40">{vincularRow.totalUnidades || 0} uds</span></span>
                 </div>
 
