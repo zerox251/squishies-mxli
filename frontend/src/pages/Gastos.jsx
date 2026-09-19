@@ -181,14 +181,14 @@ export default function Gastos() {
                 {items.map(g => {
                   const cat = CATS[g.categoria] || CATS.operativo
                   return (
-                    <div key={g.id} className="bg-[#1A1A24] border border-white/6 rounded-xl px-4 py-3
-                                               flex items-center gap-3">
-                      <span className="text-xl flex-shrink-0">{cat.icon}</span>
+                    <div key={g.id} className="bg-[#1A1A24] border border-white/6 rounded-xl px-3 py-2
+                                               flex items-center gap-2.5">
+                      <span className="text-base flex-shrink-0">{cat.icon}</span>
                       <div className="flex-1 min-w-0">
-                        <p className="font-montserrat text-white/80 text-sm font-medium truncate">
+                        <p className="font-montserrat text-white/80 text-xs font-medium truncate">
                           {g.concepto}
                         </p>
-                        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <span className={`font-montserrat text-[10px] px-1.5 py-0.5 rounded-full ${cat.color}`}>
                             {cat.label}
                           </span>
@@ -200,11 +200,16 @@ export default function Gastos() {
                           <span className="font-montserrat text-white/20 text-[10px]">
                             {fmtFecha(g.fecha)}
                           </span>
+                          {g.notas && (
+                            <span className="font-montserrat text-white/30 text-[10px] truncate max-w-[140px]">
+                              · {g.notas}
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <p className="font-anton text-white text-base">{fmt(g.total)}</p>
-                        <div className="flex items-center gap-2 justify-end mt-0.5">
+                        <p className="font-anton text-white text-sm">{fmt(g.total)}</p>
+                        <div className="flex items-center gap-2 justify-end">
                           <span className={`font-montserrat text-[10px] ${g.estado === 'pagado' ? 'text-green-400' : 'text-yellow-400'}`}>
                             {g.estado}
                           </span>
