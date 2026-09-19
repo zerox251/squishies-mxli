@@ -8,9 +8,14 @@ router.get('/', async (req, res) => {
 })
 
 router.post('/', async (req, res) => {
-  const { nombre, descripcion, precio, costo, stock } = req.body
-  const item = await prisma.squishy.create({ data: { nombre, descripcion: descripcion || null, precio, costo, stock } })
-  res.json(item)
+  try {
+    const { nombre, descripcion, precio, costo, stock } = req.body
+    const item = await prisma.squishy.create({ data: { nombre, descripcion: descripcion || null, precio, costo, stock } })
+    res.json(item)
+  } catch (e) {
+    console.error('POST /productos:', e.message)
+    res.status(500).json({ error: e.message })
+  }
 })
 
 router.put('/:id', async (req, res) => {
