@@ -77,7 +77,7 @@ export default function Cotizador() {
       <p className="font-montserrat text-white/30 text-xs mb-4">Precio público = Costo × (1 + Margen%)</p>
 
       {/* Config bar */}
-      <div className="bg-[#1A1A24] border border-white/6 rounded-xl px-4 py-2.5 mb-3
+      <div className="bg-[#1A1A24] border border-[#2a2a35] rounded-xl px-4 py-2.5 mb-3
                       flex flex-wrap gap-3 items-center">
         <span className="font-montserrat text-white/30 text-xs">Margen</span>
         <div className="flex items-center gap-1">
@@ -101,7 +101,7 @@ export default function Cotizador() {
       </div>
 
       {/* Productos */}
-      <div className="bg-[#1A1A24] border border-white/4 rounded-xl overflow-hidden mb-3">
+      <div className="bg-[#1A1A24] border border-[#2a2a35] rounded-xl overflow-hidden mb-3">
 
         {/* Column headers — desktop only */}
         <div className="hidden md:grid grid-cols-[1.5rem_1fr_5rem_5rem_7rem_6rem_6rem_6rem_1.5rem]
@@ -258,7 +258,7 @@ export default function Cotizador() {
 
       {/* Ajustes + Resumen */}
       {subtotalProductos > 0 && (
-        <div className="bg-[#1A1A24] border border-white/6 rounded-xl px-4 py-3">
+        <div className="bg-[#1A1A24] border border-[#2a2a35] rounded-xl px-4 py-3">
 
           {/* Ajustes */}
           <p className="font-anton text-white/35 text-[10px] tracking-widest mb-2">AJUSTES DEL PEDIDO</p>
