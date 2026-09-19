@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { apiFetch } from '../lib/api'
 
-const EMPTY = { nombre: '', precio: '', costo: '', stock: '' }
+const EMPTY = { nombre: '', descripcion: '', precio: '', costo: '', stock: '' }
 
 export default function Inventario() {
   const [items, setItems] = useState([])
@@ -19,7 +19,7 @@ export default function Inventario() {
 
   function openNew() { setForm(EMPTY); setEditId(null); setModal(true) }
   function openEdit(p) {
-    setForm({ nombre: p.nombre, precio: p.precio, costo: p.costo ?? '', stock: p.stock })
+    setForm({ nombre: p.nombre, descripcion: p.descripcion || '', precio: p.precio, costo: p.costo ?? '', stock: p.stock })
     setEditId(p.id)
     setModal(true)
   }
@@ -29,6 +29,7 @@ export default function Inventario() {
     setSaving(true)
     const body = {
       nombre: form.nombre,
+      descripcion: form.descripcion || null,
       precio: Number(form.precio),
       costo: form.costo ? Number(form.costo) : null,
       stock: Number(form.stock) || 0,
@@ -80,7 +81,12 @@ export default function Inventario() {
                           md:grid md:grid-cols-5 md:items-center
                           ${!item.activo ? 'opacity-40' : ''}`}
             >
-              <span className="font-montserrat text-white/80 text-sm font-medium">{item.nombre}</span>
+              <div>
+                <span className="font-montserrat text-white/80 text-sm font-medium">{item.nombre}</span>
+                {item.descripcion && (
+                  <p className="font-montserrat text-white/25 text-[10px] truncate">{item.descripcion}</p>
+                )}
+              </div>
               <div className="flex items-center gap-3 md:block">
                 <span className={`font-montserrat text-sm font-bold
                   ${item.stock <= 0 ? 'text-red-400' : item.stock <= 3 ? 'text-yellow-400' : 'text-green-400'}`}>
@@ -117,6 +123,7 @@ export default function Inventario() {
             <div className="flex flex-col gap-3">
               {[
                 { label: 'Nombre', key: 'nombre', type: 'text', placeholder: 'Squishy unicornio' },
+                { label: 'Descripción (opcional)', key: 'descripcion', type: 'text', placeholder: 'Pack de 24 pzas, colores surtidos…' },
                 { label: 'Precio venta ($)', key: 'precio', type: 'number', placeholder: '150' },
                 { label: 'Costo ($)', key: 'costo', type: 'number', placeholder: '60' },
                 { label: 'Stock inicial', key: 'stock', type: 'number', placeholder: '0' },

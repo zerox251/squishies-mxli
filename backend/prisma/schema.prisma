@@ -16,15 +16,16 @@ model Usuario {
 }
 
 model Squishy {
-  id         Int         @id @default(autoincrement())
-  nombre     String
-  precio     Float
-  costo      Float?
-  stock      Int         @default(0)
-  activo     Boolean     @default(true)
-  creadoEn   DateTime    @default(now())
-  ventas     VentaItem[]
-  bazarItems BazarItem[]
+  id          Int         @id @default(autoincrement())
+  nombre      String
+  descripcion String?
+  precio      Float
+  costo       Float?
+  stock       Int         @default(0)
+  activo      Boolean     @default(true)
+  creadoEn    DateTime    @default(now())
+  ventas      VentaItem[]
+  bazarItems  BazarItem[]
 }
 
 model Venta {

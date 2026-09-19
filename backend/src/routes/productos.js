@@ -8,17 +8,21 @@ router.get('/', async (req, res) => {
 })
 
 router.post('/', async (req, res) => {
-  const { nombre, precio, costo, stock } = req.body
-  const item = await prisma.squishy.create({ data: { nombre, precio, costo, stock } })
+  const { nombre, descripcion, precio, costo, stock } = req.body
+  const item = await prisma.squishy.create({ data: { nombre, descripcion: descripcion || null, precio, costo, stock } })
   res.json(item)
 })
 
 router.put('/:id', async (req, res) => {
-  const { nombre, precio, costo, stock, activo } = req.body
-  const item = await prisma.squishy.update({
-    where: { id: Number(req.params.id) },
-    data: { nombre, precio, costo, stock, activo },
-  })
+  const { nombre, descripcion, precio, costo, stock, activo } = req.body
+  const data = {}
+  if (nombre     !== undefined) data.nombre     = nombre
+  if (descripcion !== undefined) data.descripcion = descripcion || null
+  if (precio     !== undefined) data.precio     = precio
+  if (costo      !== undefined) data.costo      = costo
+  if (stock      !== undefined) data.stock      = stock
+  if (activo     !== undefined) data.activo     = activo
+  const item = await prisma.squishy.update({ where: { id: Number(req.params.id) }, data })
   res.json(item)
 })
 

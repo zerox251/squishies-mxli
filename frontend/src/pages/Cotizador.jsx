@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import { apiFetch } from '../lib/api'
 
 const fmt = n => isNaN(n) || !isFinite(n) ? '—' : '$' + Number(n).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
@@ -42,9 +43,50 @@ export default function Cotizador() {
       .catch(() => {})
   }, [])
 
-  function addRow() { setRows(r => [...r, newRow(nextId)]); setNextId(n => n + 1) }
+  const [addModal,  setAddModal]  = useState(false)
+  const [newForm,   setNewForm]   = useState({ nombre: '', piezas: '', paquetes: '', precio: '', divisa: 'MXN', squishyId: '' })
+  const [squishies, setSquishies] = useState([])
+  const [saving,    setSaving]    = useState(false)
+
   function removeRow(id) { setRows(r => r.filter(x => x.id !== id)) }
   function update(id, field, value) { setRows(r => r.map(x => x.id === id ? { ...x, [field]: value } : x)) }
+
+  function openAddModal() {
+    setNewForm({ nombre: '', piezas: '', paquetes: '', precio: '', divisa: 'MXN', squishyId: '' })
+    apiFetch('/api/productos').then(r => r.json()).then(setSquishies)
+    setAddModal(true)
+  }
+
+  function onSelectSquishy(id) {
+    const s = squishies.find(x => x.id === Number(id))
+    setNewForm(f => ({ ...f, squishyId: id, nombre: s ? s.nombre : f.nombre }))
+  }
+
+  async function confirmAdd() {
+    if (!newForm.nombre || !newForm.piezas || !newForm.paquetes || !newForm.precio) return
+    setSaving(true)
+    const baseCalc = calcRow(newForm, margen, tc)
+
+    if (newForm.squishyId) {
+      const newSubtotal = subtotalProductos + baseCalc.inversion
+      const share = newSubtotal > 0 ? baseCalc.inversion / newSubtotal : 0
+      const invReal = baseCalc.inversion + share * ajusteNeto
+      const totalU  = Number(newForm.piezas) * Number(newForm.paquetes)
+      const costoU  = totalU > 0 ? invReal / totalU : 0
+      const precioU = costoU * (1 + margen / 100)
+      await apiFetch(`/api/productos/${newForm.squishyId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ costo: costoU, precio: precioU }),
+      }).catch(() => {})
+    }
+
+    setRows(r => [...r, { ...newRow(nextId), ...newForm }])
+    setNextId(n => n + 1)
+    setSaving(false)
+    setAddModal(false)
+  }
+
+  function addRow() { openAddModal() }
 
   // Paso 1: costo base sin ajustes
   const calcsBase     = rows.map(r => ({ ...r, ...calcRow(r, margen, tc) }))
@@ -344,13 +386,22 @@ export default function Cotizador() {
           })}
         </div>
 
-        <div className="px-3 py-2 border-t border-white/5">
-          <button onClick={addRow}
-            className="font-montserrat text-white/25 text-xs hover:text-white/45
-                       transition-colors flex items-center gap-1">
-            <span className="text-base leading-none">+</span> Agregar producto
-          </button>
-        </div>
+        {(() => {
+          const todasCompletas = rows.every(r => r.nombre && r.piezas && r.paquetes && r.precio)
+          return (
+            <div className="px-3 py-2 border-t border-white/5">
+              <button
+                onClick={todasCompletas ? openAddModal : undefined}
+                className={`font-montserrat text-xs flex items-center gap-1 transition-colors
+                            ${todasCompletas
+                              ? 'text-white/40 hover:text-white/70 cursor-pointer'
+                              : 'text-white/15 cursor-not-allowed'}`}
+                title={todasCompletas ? '' : 'Completa todos los productos antes de agregar otro'}>
+                <span className="text-base leading-none">+</span> Agregar producto
+              </button>
+            </div>
+          )
+        })()}
       </div>
 
       {/* Ajustes + Resumen */}
@@ -401,6 +452,135 @@ export default function Cotizador() {
               <span className={`font-anton text-2xl ${totalGanancia >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                 {fmt(totalGanancia)}
               </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Agregar Producto */}
+      {addModal && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end md:justify-center md:items-center bg-black/70 backdrop-blur-sm">
+          <div className="absolute inset-0" onClick={() => setAddModal(false)} />
+          <div className="relative bg-[#1A1A24] border border-white/10
+                          rounded-t-2xl md:rounded-2xl w-full md:max-w-md
+                          mb-14 md:mb-0 flex flex-col max-h-[88vh]">
+
+            <div className="flex items-center justify-between px-5 pt-5 pb-1 flex-shrink-0">
+              <h2 className="font-anton text-white text-lg tracking-wider">AGREGAR PRODUCTO</h2>
+              <button onClick={() => setAddModal(false)} className="text-white/25 hover:text-white/60 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                     fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+
+            <div className="overflow-y-auto px-5 py-4 flex flex-col gap-3 flex-1">
+
+              {/* Vincular producto existente */}
+              <div>
+                <label className="font-montserrat text-white/40 text-xs mb-1 block">
+                  Vincular con inventario <span className="text-white/20">(opcional)</span>
+                </label>
+                <select value={newForm.squishyId}
+                  onChange={e => onSelectSquishy(e.target.value)}
+                  className="w-full bg-[#0F0F13] border border-white/10 rounded-lg px-3 py-2.5
+                             text-white text-sm font-montserrat focus:outline-none focus:border-pop-coral/40">
+                  <option value="">— Sin vincular —</option>
+                  {squishies.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.nombre}{s.stock > 0 ? ` (${s.stock} uds)` : ''}
+                    </option>
+                  ))}
+                </select>
+                {newForm.squishyId && (
+                  <p className="font-montserrat text-emerald-400/60 text-[10px] mt-1">
+                    ✓ Al guardar se actualizará costo y precio de venta en inventario
+                  </p>
+                )}
+              </div>
+
+              {/* Nombre */}
+              <div>
+                <label className="font-montserrat text-white/40 text-xs mb-1 block">Nombre</label>
+                <input type="text" value={newForm.nombre} placeholder="Cubitos infinitos…"
+                  onChange={e => setNewForm(f => ({ ...f, nombre: e.target.value }))}
+                  className="w-full bg-[#0F0F13] border border-white/10 rounded-lg px-3 py-2.5
+                             text-white text-sm font-montserrat placeholder-white/20
+                             focus:outline-none focus:border-pop-coral/40" />
+              </div>
+
+              {/* Pzas/paq + Paquetes */}
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { label: 'Pzas/paquete', key: 'piezas', placeholder: '24' },
+                  { label: 'Paquetes',     key: 'paquetes', placeholder: '1' },
+                ].map(({ label, key, placeholder }) => (
+                  <div key={key}>
+                    <label className="font-montserrat text-white/40 text-xs mb-1 block">{label}</label>
+                    <input type="number" value={newForm[key]} placeholder={placeholder}
+                      onChange={e => setNewForm(f => ({ ...f, [key]: e.target.value }))}
+                      className="w-full bg-[#0F0F13] border border-white/10 rounded-lg px-3 py-2.5
+                                 text-white text-sm font-montserrat placeholder-white/20
+                                 focus:outline-none focus:border-pop-coral/40 text-center" />
+                  </div>
+                ))}
+              </div>
+
+              {/* Precio + divisa */}
+              <div>
+                <label className="font-montserrat text-white/40 text-xs mb-1 block">Precio por paquete</label>
+                <div className="flex gap-2">
+                  <input type="number" value={newForm.precio}
+                    placeholder={newForm.divisa === 'USD' ? '5.00' : '177'}
+                    onChange={e => setNewForm(f => ({ ...f, precio: e.target.value }))}
+                    className="flex-1 bg-[#0F0F13] border border-white/10 rounded-lg px-3 py-2.5
+                               text-white text-sm font-montserrat placeholder-white/20
+                               focus:outline-none focus:border-pop-coral/40 text-center" />
+                  <button
+                    onClick={() => setNewForm(f => ({ ...f, divisa: f.divisa === 'MXN' ? 'USD' : 'MXN' }))}
+                    className={`px-3 py-2 rounded-lg text-xs font-montserrat font-bold border transition-colors
+                                ${newForm.divisa === 'USD'
+                                  ? 'border-blue-500/40 bg-blue-500/10 text-blue-400'
+                                  : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400'}`}>
+                    {newForm.divisa}
+                  </button>
+                </div>
+                {newForm.divisa === 'USD' && newForm.precio && (
+                  <p className="font-montserrat text-white/25 text-[10px] mt-1">
+                    ≈ {fmt(Number(newForm.precio) * tc)} MXN por paquete
+                  </p>
+                )}
+              </div>
+
+              {/* Preview cálculo */}
+              {newForm.piezas && newForm.paquetes && newForm.precio && (() => {
+                const preview = calcRow(newForm, margen, tc)
+                return preview.costoUnit > 0 ? (
+                  <div className="bg-[#0F0F13] border border-white/6 rounded-lg px-3 py-2 flex gap-4 flex-wrap">
+                    <span className="font-montserrat text-white/30 text-[10px]">
+                      Costo/u <span className="text-white/60">{fmt(preview.costoUnit)}</span>
+                    </span>
+                    <span className="font-montserrat text-white/30 text-[10px]">
+                      P.público <span className="text-pop-rose">{fmt(preview.precioPublico)}</span>
+                    </span>
+                    <span className="font-montserrat text-white/30 text-[10px]">
+                      {preview.totalUnidades}u · Inv. <span className="text-white/60">{fmt(preview.inversion)}</span>
+                    </span>
+                  </div>
+                ) : null
+              })()}
+            </div>
+
+            <div className="px-5 pb-5 pt-2 flex gap-2 flex-shrink-0">
+              <button onClick={() => setAddModal(false)}
+                className="flex-1 border border-white/10 text-white/40 font-montserrat text-sm py-3 rounded-xl">
+                Cancelar
+              </button>
+              <button onClick={confirmAdd} disabled={saving || !newForm.nombre || !newForm.piezas || !newForm.paquetes || !newForm.precio}
+                className="flex-1 bg-pop-coral text-white font-montserrat font-bold text-sm py-3 rounded-xl disabled:opacity-40">
+                {saving ? 'Guardando…' : 'Agregar'}
+              </button>
             </div>
           </div>
         </div>
