@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 const fmt = n => isNaN(n) || !isFinite(n) ? '—' : '$' + Number(n).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
@@ -31,6 +31,14 @@ export default function Cotizador() {
   const [descuento, setDescuento] = useState('')
   const [envio,     setEnvio]     = useState('')
   const [impuesto,  setImpuesto]  = useState('')
+  const [tcAuto,    setTcAuto]    = useState(false)
+
+  useEffect(() => {
+    fetch('https://open.er-api.com/v6/latest/USD')
+      .then(r => r.json())
+      .then(d => { if (d?.rates?.MXN) { setTc(Number(d.rates.MXN.toFixed(4))); setTcAuto(true) } })
+      .catch(() => {})
+  }, [])
 
   function addRow() { setRows(r => [...r, newRow(nextId)]); setNextId(n => n + 1) }
   function removeRow(id) { setRows(r => r.filter(x => x.id !== id)) }
@@ -63,10 +71,15 @@ export default function Cotizador() {
           <span className="font-anton text-pop-coral">%</span>
         </div>
         <div className="w-px h-4 bg-white/10" />
-        <span className="font-montserrat text-white/30 text-xs">USD → MXN</span>
-        <input type="number" value={tc} min={1} step={0.1}
-          onChange={e => setTc(Number(e.target.value))}
-          className="w-16 bg-[#0F0F13] border border-white/10 rounded-lg px-2 py-1.5
+        <div>
+          <span className="font-montserrat text-white/30 text-xs">USD → MXN</span>
+          {tcAuto && (
+            <span className="font-montserrat text-emerald-500/60 text-[9px] ml-1.5">● live</span>
+          )}
+        </div>
+        <input type="number" value={tc} min={1} step={0.01}
+          onChange={e => { setTc(Number(e.target.value)); setTcAuto(false) }}
+          className="w-20 bg-[#0F0F13] border border-white/10 rounded-lg px-2 py-1.5
                      text-white text-sm font-montserrat text-center focus:outline-none focus:border-white/30" />
       </div>
 
