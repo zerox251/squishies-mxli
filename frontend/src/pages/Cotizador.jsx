@@ -140,11 +140,6 @@ export default function Cotizador() {
 
     const productRows = calcs.filter(r => r.totalUnidades > 0).map((r, i) => {
       const ajuste = (r.aEnvio || 0) + (r.aImpuesto || 0) - (r.aDescuento || 0)
-      const ajusteParts = [
-        r.aEnvio     > 0 ? `Flete $${(r.aEnvio).toFixed(2)}`    : '',
-        r.aImpuesto  > 0 ? `Imp. $${(r.aImpuesto).toFixed(2)}`  : '',
-        r.aDescuento > 0 ? `Desc. -$${(r.aDescuento).toFixed(2)}` : '',
-      ].filter(Boolean).join('\n')
       return [
         i + 1,
         r.nombre || '—',
@@ -153,7 +148,7 @@ export default function Cotizador() {
         `${r.precio} ${r.divisa}`,
         `$${r.costoUnit.toFixed(2)}`,
         `$${r.precioPublico.toFixed(2)}`,
-        ajusteNeto !== 0 ? (ajuste !== 0 ? `$${ajuste.toFixed(2)}${ajusteParts ? '\n' + ajusteParts : ''}` : '—') : '—',
+        ajusteNeto !== 0 ? (ajuste !== 0 ? `$${ajuste.toFixed(2)}` : '—') : '—',
         `$${(r.inversionReal ?? r.inversion).toFixed(2)}`,
       ]
     })
