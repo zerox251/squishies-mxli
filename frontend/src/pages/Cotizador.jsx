@@ -43,10 +43,13 @@ export default function Cotizador() {
       .catch(() => {})
   }, [])
 
-  const [vincularRow, setVincularRow] = useState(null)
-  const [squishies,   setSquishies]   = useState([])
-  const [squishyId,   setSquishyId]   = useState('')
-  const [saving,      setSaving]      = useState(false)
+  const [vincularRow,  setVincularRow]  = useState(null)
+  const [squishies,    setSquishies]    = useState([])
+  const [squishyId,    setSquishyId]    = useState('')
+  const [squishySearch,setSquishySearch]= useState('')
+  const [creatingNew,  setCreatingNew]  = useState(false)
+  const [newNombre,    setNewNombre]    = useState('')
+  const [saving,       setSaving]       = useState(false)
 
   function removeRow(id) { setRows(r => r.filter(x => x.id !== id)) }
   function update(id, field, value)   { setRows(r => r.map(x => x.id === id ? { ...x, [field]: value } : x)) }
@@ -55,16 +58,34 @@ export default function Cotizador() {
   function openVincular(rowCalc) {
     setVincularRow(rowCalc)
     setSquishyId('')
+    setSquishySearch('')
+    setCreatingNew(false)
+    setNewNombre('')
     apiFetch('/api/productos').then(r => r.json()).then(setSquishies)
   }
 
   async function confirmVincular() {
-    if (!squishyId || !vincularRow) return
+    if (!vincularRow) return
     setSaving(true)
-    await apiFetch(`/api/productos/${squishyId}`, {
-      method: 'PUT',
-      body: JSON.stringify({ costo: vincularRow.costoUnit, precio: vincularRow.precioPublico }),
-    }).catch(() => {})
+    try {
+      if (creatingNew) {
+        await apiFetch('/api/productos', {
+          method: 'POST',
+          body: JSON.stringify({
+            nombre: newNombre.trim(),
+            precio: vincularRow.precioPublico,
+            costo: vincularRow.costoUnit,
+            stock: 0,
+          }),
+        })
+      } else {
+        if (!squishyId) return
+        await apiFetch(`/api/productos/${squishyId}`, {
+          method: 'PUT',
+          body: JSON.stringify({ costo: vincularRow.costoUnit, precio: vincularRow.precioPublico }),
+        })
+      }
+    } catch {}
     setSaving(false)
     setVincularRow(null)
   }
@@ -497,36 +518,103 @@ export default function Cotizador() {
               </span>
             </div>
 
-            <div className="mb-4">
-              <label className="font-montserrat text-white/40 text-xs mb-1 block">Selecciona el producto del inventario</label>
-              <select value={squishyId} onChange={e => setSquishyId(e.target.value)}
-                className="w-full bg-[#0F0F13] border border-white/10 rounded-lg px-3 py-2.5
-                           text-white text-sm font-montserrat focus:outline-none focus:border-emerald-500/40">
-                <option value="">— Seleccionar —</option>
-                {squishies.map(s => (
-                  <option key={s.id} value={s.id}>
-                    {s.nombre}{s.stock > 0 ? ` · ${s.stock} uds` : ''}
-                  </option>
-                ))}
-              </select>
-              {squishyId && (
-                <p className="font-montserrat text-emerald-400/60 text-[10px] mt-1.5">
-                  ✓ Se actualizará costo ({fmt(vincularRow.costoUnit)}) y precio ({fmt(vincularRow.precioPublico)}) en inventario
-                </p>
-              )}
-            </div>
+            {!creatingNew ? (
+              <>
+                <div className="mb-1">
+                  <label className="font-montserrat text-white/40 text-xs mb-1 block">Buscar producto del inventario</label>
+                  <input
+                    type="text"
+                    value={squishySearch}
+                    onChange={e => { setSquishySearch(e.target.value); setSquishyId('') }}
+                    placeholder="Escribe para buscar…"
+                    className="w-full bg-[#0F0F13] border border-white/10 rounded-lg px-3 py-2
+                               text-white text-sm font-montserrat placeholder-white/20
+                               focus:outline-none focus:border-emerald-500/40"
+                  />
+                </div>
 
-            <div className="flex gap-2">
-              <button onClick={() => setVincularRow(null)}
-                className="flex-1 border border-white/10 text-white/40 font-montserrat text-sm py-2.5 rounded-xl">
-                Cancelar
-              </button>
-              <button onClick={confirmVincular} disabled={saving || !squishyId}
-                className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-montserrat font-bold
-                           text-sm py-2.5 rounded-xl disabled:opacity-40 transition-colors">
-                {saving ? 'Actualizando…' : 'Actualizar inventario'}
-              </button>
-            </div>
+                {/* Lista filtrada */}
+                <div className="max-h-40 overflow-y-auto border border-white/8 rounded-lg mb-1">
+                  {squishies
+                    .filter(s => s.nombre.toLowerCase().includes(squishySearch.toLowerCase()))
+                    .map(s => (
+                      <button key={s.id} onClick={() => setSquishyId(String(s.id))}
+                        className={`w-full text-left px-3 py-2 font-montserrat text-sm transition-colors
+                                    border-b border-white/5 last:border-0
+                                    ${squishyId === String(s.id)
+                                      ? 'bg-emerald-500/10 text-emerald-300'
+                                      : 'text-white/60 hover:bg-white/5'}`}>
+                        {s.nombre}
+                        {s.stock > 0 && <span className="text-white/25 text-xs ml-2">{s.stock} uds</span>}
+                      </button>
+                    ))
+                  }
+                  {squishies.filter(s => s.nombre.toLowerCase().includes(squishySearch.toLowerCase())).length === 0 && (
+                    <p className="px-3 py-2.5 font-montserrat text-white/25 text-xs">Sin resultados</p>
+                  )}
+                </div>
+
+                {squishyId && (
+                  <p className="font-montserrat text-emerald-400/60 text-[10px] mb-3">
+                    ✓ Se actualizará costo ({fmt(vincularRow.costoUnit)}) y precio ({fmt(vincularRow.precioPublico)})
+                  </p>
+                )}
+
+                {/* Crear nuevo */}
+                <button
+                  onClick={() => { setCreatingNew(true); setNewNombre(squishySearch) }}
+                  className="font-montserrat text-xs text-white/25 hover:text-emerald-400/70
+                             transition-colors flex items-center gap-1 mb-4">
+                  <span className="text-base leading-none">+</span> Crear nuevo producto
+                </button>
+
+                <div className="flex gap-2">
+                  <button onClick={() => setVincularRow(null)}
+                    className="flex-1 border border-white/10 text-white/40 font-montserrat text-sm py-2.5 rounded-xl">
+                    Cancelar
+                  </button>
+                  <button onClick={confirmVincular} disabled={saving || !squishyId}
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-montserrat font-bold
+                               text-sm py-2.5 rounded-xl disabled:opacity-40 transition-colors">
+                    {saving ? 'Actualizando…' : 'Actualizar inventario'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="mb-3">
+                  <label className="font-montserrat text-white/40 text-xs mb-1 block">Nombre del nuevo producto</label>
+                  <input
+                    type="text"
+                    value={newNombre}
+                    onChange={e => setNewNombre(e.target.value)}
+                    placeholder="Squishy unicornio…"
+                    autoFocus
+                    className="w-full bg-[#0F0F13] border border-white/10 rounded-lg px-3 py-2.5
+                               text-white text-sm font-montserrat placeholder-white/20
+                               focus:outline-none focus:border-emerald-500/40"
+                  />
+                </div>
+
+                <div className="bg-[#0F0F13] border border-white/6 rounded-lg px-3 py-2 mb-4 flex gap-4 flex-wrap">
+                  <span className="font-montserrat text-white/25 text-xs">Costo <span className="text-white/50">{fmt(vincularRow.costoUnit)}</span></span>
+                  <span className="font-montserrat text-white/25 text-xs">Precio <span className="text-pop-rose">{fmt(vincularRow.precioPublico)}</span></span>
+                  <span className="font-montserrat text-white/25 text-xs">Stock <span className="text-white/40">0</span></span>
+                </div>
+
+                <div className="flex gap-2">
+                  <button onClick={() => setCreatingNew(false)}
+                    className="flex-1 border border-white/10 text-white/40 font-montserrat text-sm py-2.5 rounded-xl">
+                    ← Volver
+                  </button>
+                  <button onClick={confirmVincular} disabled={saving || !newNombre.trim()}
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-montserrat font-bold
+                               text-sm py-2.5 rounded-xl disabled:opacity-40 transition-colors">
+                    {saving ? 'Creando…' : 'Crear producto'}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
