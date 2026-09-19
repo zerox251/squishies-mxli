@@ -71,7 +71,7 @@ export default function Cotizador() {
       </div>
 
       {/* Productos */}
-      <div className="bg-[#1A1A24] border border-white/6 rounded-xl overflow-hidden mb-3">
+      <div className="bg-[#1A1A24] border border-white/4 rounded-xl overflow-hidden mb-3">
 
         {/* Column headers — desktop only */}
         <div className="hidden md:grid grid-cols-[1.5rem_1fr_5rem_5rem_7rem_6rem_6rem_6rem_1.5rem]
@@ -95,9 +95,9 @@ export default function Cotizador() {
                     <span className="font-montserrat text-white/20 text-[10px] w-4 flex-shrink-0">{i + 1}</span>
                     <input type="text" value={r.nombre} placeholder="Nombre del producto…"
                       onChange={e => update(r.id, 'nombre', e.target.value)}
-                      className="flex-1 bg-transparent text-white/80 text-sm font-montserrat
-                                 placeholder-white/20 focus:outline-none border-b border-white/8
-                                 focus:border-white/25 pb-0.5" />
+                      className="flex-1 bg-[#0F0F13] border border-white/8 rounded-lg text-white/80 text-sm
+                                 font-montserrat placeholder-white/20 focus:outline-none
+                                 focus:border-white/25 py-1.5 px-2" />
                     {rows.length > 1 && (
                       <button onClick={() => removeRow(r.id)}
                         className="text-white/15 hover:text-red-400 transition-colors text-base leading-none flex-shrink-0">×</button>
@@ -156,9 +156,9 @@ export default function Cotizador() {
                   <span className="font-montserrat text-white/20 text-[10px]">{i + 1}</span>
                   <input type="text" value={r.nombre} placeholder="Nombre…"
                     onChange={e => update(r.id, 'nombre', e.target.value)}
-                    className="bg-transparent text-white/80 text-xs font-montserrat
-                               placeholder-white/15 focus:outline-none border-b border-transparent
-                               focus:border-white/20 pb-0.5" />
+                    className="w-full bg-[#0F0F13] border border-white/8 rounded-lg text-white/80 text-xs
+                               font-montserrat placeholder-white/20 focus:outline-none
+                               focus:border-white/25 py-1.5 px-2" />
                   <input type="number" value={r.piezas} placeholder="24"
                     onChange={e => update(r.id, 'piezas', e.target.value)}
                     className={INPUT} />
