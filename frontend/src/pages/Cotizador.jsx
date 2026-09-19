@@ -97,14 +97,14 @@ export default function Cotizador() {
   const totalGanancia = totalIngreso - costoReal
 
   function exportCSV() {
-    const header = ['#', 'Producto', 'Pzas/paq', 'Paquetes', 'Precio', 'Divisa', 'Costo/u (MXN)', 'P.público (MXN)', 'Costo Total (MXN)', 'Ajuste (MXN)']
+    const header = ['#', 'Producto', 'Pzas/paq', 'Paquetes', 'Precio', 'Divisa', 'Costo/u (MXN)', 'P.público (MXN)', 'Ajuste (MXN)', 'Total (MXN)']
     const rows = calcs.filter(r => r.totalUnidades > 0).map((r, i) => {
       const ajuste = (r.aEnvio || 0) + (r.aImpuesto || 0) - (r.aDescuento || 0)
       return [
         i + 1, r.nombre || '—', r.piezas, r.paquetes, r.precio, r.divisa,
         r.costoUnit.toFixed(2), r.precioPublico.toFixed(2),
-        (r.inversionReal ?? r.inversion).toFixed(2),
         ajusteNeto !== 0 ? ajuste.toFixed(2) : '0.00',
+        (r.inversionReal ?? r.inversion).toFixed(2),
       ]
     })
     const ajustes = [
@@ -153,14 +153,14 @@ export default function Cotizador() {
         `${r.precio} ${r.divisa}`,
         `$${r.costoUnit.toFixed(2)}`,
         `$${r.precioPublico.toFixed(2)}`,
-        `$${(r.inversionReal ?? r.inversion).toFixed(2)}`,
         ajusteNeto !== 0 ? (ajuste !== 0 ? `$${ajuste.toFixed(2)}${ajusteParts ? '\n' + ajusteParts : ''}` : '—') : '—',
+        `$${(r.inversionReal ?? r.inversion).toFixed(2)}`,
       ]
     })
 
     autoTable(doc, {
       startY: 28,
-      head: [['#', 'Producto', 'Pzas/paq', 'Paquetes', 'Precio', 'Costo/u', 'P.público', 'Costo Total', 'Ajuste']],
+      head: [['#', 'Producto', 'Pzas/paq', 'Paquetes', 'Precio', 'Costo/u', 'P.público', 'Ajuste', 'Total']],
       body: productRows,
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [30, 30, 40], textColor: 255 },
@@ -241,7 +241,7 @@ export default function Cotizador() {
         {/* Column headers — desktop only */}
         <div className="hidden md:grid grid-cols-[1.5rem_1fr_6rem_6rem_8rem_7rem_7rem_7rem_7rem_2rem]
                         gap-2 px-3 py-1.5 border-b border-white/5">
-          {['#','Producto','Pzas/paq','Paquetes','Precio','Costo/u','P.público','Costo Total','Ajuste',''].map((h, i) => (
+          {['#','Producto','Pzas/paq','Paquetes','Precio','Costo/u','P.público','Ajuste','Total',''].map((h, i) => (
             <span key={i} className="font-montserrat text-white/20 text-[10px] text-center first:text-left last:text-right">
               {h}
             </span>
@@ -367,9 +367,6 @@ export default function Cotizador() {
                                     ${hasData ? 'text-pop-rose' : 'text-white/20'}`}>
                     {hasData ? fmt(r.precioPublico) : '—'}
                   </span>
-                  <span className="font-montserrat text-white/50 text-xs text-center">
-                    {hasData ? fmt(r.inversionReal ?? r.inversion) : '—'}
-                  </span>
                   {/* Columna Ajuste: flete + imp absorbido */}
                   <div className="text-center">
                     {hasData && ajusteNeto !== 0 ? (
@@ -387,6 +384,10 @@ export default function Cotizador() {
                       <span className="font-montserrat text-white/12 text-xs">—</span>
                     )}
                   </div>
+                  {/* Columna Total: costo real con ajustes incluidos */}
+                  <span className="font-montserrat text-white/50 text-xs text-center">
+                    {hasData ? fmt(r.inversionReal ?? r.inversion) : '—'}
+                  </span>
                   <div className="flex items-center justify-end gap-2">
                     {hasData && (
                       <button onClick={() => openVincular(r)}
