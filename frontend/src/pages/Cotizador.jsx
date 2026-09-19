@@ -44,13 +44,27 @@ export default function Cotizador() {
   function removeRow(id) { setRows(r => r.filter(x => x.id !== id)) }
   function update(id, field, value) { setRows(r => r.map(x => x.id === id ? { ...x, [field]: value } : x)) }
 
-  const calcs = rows.map(r => ({ ...r, ...calcRow(r, margen, tc) }))
+  // Paso 1: costo base sin ajustes
+  const calcsBase     = rows.map(r => ({ ...r, ...calcRow(r, margen, tc) }))
+  const subtotalProductos = calcsBase.reduce((s, r) => s + r.inversion, 0)
 
-  const subtotalProductos = calcs.reduce((s, r) => s + r.inversion, 0)
   const ajDescuento = Number(descuento) || 0
   const ajEnvio     = Number(envio)     || 0
   const ajImpuesto  = Number(impuesto)  || 0
   const costoReal   = subtotalProductos - ajDescuento + ajEnvio + ajImpuesto
+
+  // Paso 2: repartir ajustes por peso de inversión → costo/precio reales por producto
+  const ajusteNeto = ajEnvio + ajImpuesto - ajDescuento
+  const calcs = calcsBase.map(r => {
+    if (subtotalProductos === 0 || r.inversion === 0) return r
+    const share          = r.inversion / subtotalProductos
+    const inversionReal  = r.inversion + share * ajusteNeto
+    const costoRealUnit  = r.totalUnidades > 0 ? inversionReal / r.totalUnidades : 0
+    const precioPublico  = costoRealUnit * (1 + margen / 100)
+    const gananciaTotal  = (precioPublico - costoRealUnit) * r.totalUnidades
+    return { ...r, inversionReal, costoUnit: costoRealUnit, precioPublico, gananciaTotal }
+  })
+
   const totalIngreso  = calcs.reduce((s, r) => s + r.precioPublico * r.totalUnidades, 0)
   const totalGanancia = totalIngreso - costoReal
 
@@ -152,7 +166,7 @@ export default function Cotizador() {
                       <Chip label={`${r.totalUnidades}u`} />
                       <Chip label={`Costo ${fmt(r.costoUnit)}`} />
                       <Chip label={`Público ${fmt(r.precioPublico)}`} rose />
-                      <Chip label={`Inv. ${fmt(r.inversion)}`} />
+                      <Chip label={`Inv. ${fmt(r.inversionReal ?? r.inversion)}`} />
                       <Chip label={`+${fmt(r.gananciaTotal)}`} green />
                     </div>
                   )}
