@@ -72,7 +72,9 @@ export default function Cotizador() {
     if (!vincularRow) return
     setSaving(true)
     try {
-      const precioFinal = Number(newPrecio) || vincularRow.precioPublico
+      const round2 = n => Math.round(Number(n) * 100) / 100
+      const precioFinal = round2(newPrecio || vincularRow.precioPublico)
+      const costoFinal  = round2(vincularRow.costoUnit)
       if (creatingNew) {
         await apiFetch('/api/productos', {
           method: 'POST',
@@ -80,7 +82,7 @@ export default function Cotizador() {
             nombre: newNombre.trim(),
             descripcion: newDescripcion.trim() || null,
             precio: precioFinal,
-            costo: vincularRow.costoUnit,
+            costo: costoFinal,
             stock: vincularRow.totalUnidades || 0,
           }),
         })
@@ -88,7 +90,7 @@ export default function Cotizador() {
         if (!squishyId) return
         await apiFetch(`/api/productos/${squishyId}`, {
           method: 'PUT',
-          body: JSON.stringify({ costo: vincularRow.costoUnit, precio: precioFinal }),
+          body: JSON.stringify({ costo: costoFinal, precio: precioFinal }),
         })
       }
     } catch {}
