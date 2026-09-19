@@ -58,11 +58,14 @@ export default function Cotizador() {
   const calcs = calcsBase.map(r => {
     if (subtotalProductos === 0 || r.inversion === 0) return r
     const share          = r.inversion / subtotalProductos
+    const aEnvio         = share * ajEnvio
+    const aImpuesto      = share * ajImpuesto
+    const aDescuento     = share * ajDescuento
     const inversionReal  = r.inversion + share * ajusteNeto
     const costoRealUnit  = r.totalUnidades > 0 ? inversionReal / r.totalUnidades : 0
     const precioPublico  = costoRealUnit * (1 + margen / 100)
     const gananciaTotal  = (precioPublico - costoRealUnit) * r.totalUnidades
-    return { ...r, inversionReal, costoUnit: costoRealUnit, precioPublico, gananciaTotal }
+    return { ...r, inversionReal, aEnvio, aImpuesto, aDescuento, costoUnit: costoRealUnit, precioPublico, gananciaTotal }
   })
 
   const totalIngreso  = calcs.reduce((s, r) => s + r.precioPublico * r.totalUnidades, 0)
@@ -170,6 +173,13 @@ export default function Cotizador() {
                       <Chip label={`+${fmt(r.gananciaTotal)}`} green />
                     </div>
                   )}
+                  {hasData && ajusteNeto !== 0 && (
+                    <div className="pl-6 mt-1 flex gap-3 flex-wrap">
+                      {r.aEnvio     > 0 && <span className="font-montserrat text-white/25 text-[9px]">Flete +{fmt(r.aEnvio)}</span>}
+                      {r.aImpuesto  > 0 && <span className="font-montserrat text-white/25 text-[9px]">Imp. +{fmt(r.aImpuesto)}</span>}
+                      {r.aDescuento > 0 && <span className="font-montserrat text-emerald-500/40 text-[9px]">Desc. −{fmt(r.aDescuento)}</span>}
+                    </div>
+                  )}
                   {r.divisa === 'USD' && r.precio && (
                     <p className="font-montserrat text-white/20 text-[9px] pl-6 mt-1">
                       ≈ {fmt(Number(r.precio) * tc)} MXN por paquete
@@ -213,9 +223,18 @@ export default function Cotizador() {
                                     ${hasData ? 'text-pop-rose' : 'text-white/20'}`}>
                     {hasData ? fmt(r.precioPublico) : '—'}
                   </span>
-                  <span className="font-montserrat text-white/50 text-xs text-center">
-                    {hasData ? fmt(r.inversion) : '—'}
-                  </span>
+                  <div className="text-center">
+                    <span className="font-montserrat text-white/50 text-xs">
+                      {hasData ? fmt(r.inversionReal ?? r.inversion) : '—'}
+                    </span>
+                    {hasData && ajusteNeto !== 0 && (
+                      <div className="flex flex-col gap-px mt-0.5">
+                        {r.aEnvio     > 0 && <span className="font-montserrat text-white/20 text-[9px]">flete +{fmt(r.aEnvio)}</span>}
+                        {r.aImpuesto  > 0 && <span className="font-montserrat text-white/20 text-[9px]">imp. +{fmt(r.aImpuesto)}</span>}
+                        {r.aDescuento > 0 && <span className="font-montserrat text-emerald-500/35 text-[9px]">desc. −{fmt(r.aDescuento)}</span>}
+                      </div>
+                    )}
+                  </div>
                   {rows.length > 1
                     ? <button onClick={() => removeRow(r.id)}
                         className="text-white/12 hover:text-red-400 transition-colors text-base leading-none text-right">×</button>
