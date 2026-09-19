@@ -1,25 +1,27 @@
 import { useState } from 'react'
 
-const fmt    = n => isNaN(n) || !isFinite(n) ? '—' : '$' + Number(n).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-const fmtUSD = n => isNaN(n) || !isFinite(n) ? '—' : 'USD $' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const fmt = n => isNaN(n) || !isFinite(n) ? '—' : '$' + Number(n).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 function calcRow(r, margen, tc) {
-  const piezas   = Number(r.piezas)   || 0
-  const paquetes = Number(r.paquetes) || 0
-  const precio   = Number(r.precio)   || 0
-  const precioMXN = r.divisa === 'USD' ? precio * tc : precio
+  const piezas     = Number(r.piezas)   || 0
+  const paquetes   = Number(r.paquetes) || 0
+  const precio     = Number(r.precio)   || 0
+  const precioMXN  = r.divisa === 'USD' ? precio * tc : precio
   const totalUnidades = piezas * paquetes
   const costoUnit     = piezas > 0 ? precioMXN / piezas : 0
   const precioPublico = costoUnit * (1 + margen / 100)
-  const gananciaUnit  = precioPublico - costoUnit
-  const gananciaTotal = gananciaUnit * totalUnidades
-  const inversionMXN  = precioMXN * paquetes
-  return { totalUnidades, costoUnit, precioPublico, gananciaUnit, gananciaTotal, inversion: inversionMXN }
+  const gananciaTotal = (precioPublico - costoUnit) * totalUnidades
+  const inversion     = precioMXN * paquetes
+  return { totalUnidades, costoUnit, precioPublico, gananciaTotal, inversion }
 }
 
 function newRow(id) {
   return { id, nombre: '', piezas: '', paquetes: '', precio: '', divisa: 'MXN' }
 }
+
+const INPUT = `bg-[#0F0F13] border border-white/10 rounded-lg text-white text-xs
+               font-montserrat placeholder-white/15 focus:outline-none focus:border-white/25
+               text-center py-1.5 px-1.5 w-full`
 
 export default function Cotizador() {
   const [margen,    setMargen]    = useState(100)
@@ -30,24 +32,13 @@ export default function Cotizador() {
   const [envio,     setEnvio]     = useState('')
   const [impuesto,  setImpuesto]  = useState('')
 
-  function addRow() {
-    setRows(r => [...r, newRow(nextId)])
-    setNextId(n => n + 1)
-  }
+  function addRow() { setRows(r => [...r, newRow(nextId)]); setNextId(n => n + 1) }
+  function removeRow(id) { setRows(r => r.filter(x => x.id !== id)) }
+  function update(id, field, value) { setRows(r => r.map(x => x.id === id ? { ...x, [field]: value } : x)) }
 
-  function removeRow(id) {
-    setRows(r => r.filter(x => x.id !== id))
-  }
-
-  function update(id, field, value) {
-    setRows(r => r.map(x => x.id === id ? { ...x, [field]: value } : x))
-  }
-
-  const hayUSD = rows.some(r => r.divisa === 'USD')
-  const calcs  = rows.map(r => ({ ...r, ...calcRow(r, margen, tc) }))
+  const calcs = rows.map(r => ({ ...r, ...calcRow(r, margen, tc) }))
 
   const subtotalProductos = calcs.reduce((s, r) => s + r.inversion, 0)
-  const totalUnidades     = calcs.reduce((s, r) => s + r.totalUnidades, 0)
   const ajDescuento = Number(descuento) || 0
   const ajEnvio     = Number(envio)     || 0
   const ajImpuesto  = Number(impuesto)  || 0
@@ -58,176 +49,215 @@ export default function Cotizador() {
   return (
     <div>
       <h1 className="font-anton text-white text-2xl tracking-widest mb-1">COTIZADOR</h1>
-      <p className="font-montserrat text-white/30 text-xs mb-5">Calcula precios de venta a partir del costo por paquete</p>
+      <p className="font-montserrat text-white/30 text-xs mb-4">Precio público = Costo × (1 + Margen%)</p>
 
-      {/* Margen + tipo de cambio */}
-      <div className="bg-[#1A1A24] border border-white/6 rounded-xl px-4 py-3 mb-4 flex flex-wrap gap-4 items-center">
-        <div className="flex-1 min-w-0">
-          <p className="font-montserrat text-white/40 text-xs mb-0.5">Margen de ganancia</p>
-          <p className="font-montserrat text-white/20 text-[10px]">Precio público = Costo MXN × (1 + Margen%)</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <input
-            type="number" value={margen} min={0}
+      {/* Config bar */}
+      <div className="bg-[#1A1A24] border border-white/6 rounded-xl px-4 py-2.5 mb-3
+                      flex flex-wrap gap-3 items-center">
+        <span className="font-montserrat text-white/30 text-xs">Margen</span>
+        <div className="flex items-center gap-1">
+          <input type="number" value={margen} min={0}
             onChange={e => setMargen(Number(e.target.value))}
-            className="w-16 bg-[#0F0F13] border border-pop-coral/40 rounded-lg px-2 py-2
-                       text-white text-sm font-montserrat text-center focus:outline-none focus:border-pop-coral/80"
-          />
-          <span className="font-anton text-pop-coral text-lg">%</span>
+            className="w-14 bg-[#0F0F13] border border-pop-coral/40 rounded-lg px-2 py-1.5
+                       text-white text-sm font-montserrat text-center focus:outline-none focus:border-pop-coral/70" />
+          <span className="font-anton text-pop-coral">%</span>
         </div>
-        <div className="flex items-center gap-2 border-l border-white/10 pl-4">
-          <div>
-            <p className="font-montserrat text-white/40 text-xs mb-0.5">USD → MXN</p>
-          </div>
-          <input
-            type="number" value={tc} min={1} step={0.1}
-            onChange={e => setTc(Number(e.target.value))}
-            className="w-16 bg-[#0F0F13] border border-white/10 rounded-lg px-2 py-2
-                       text-white text-sm font-montserrat text-center focus:outline-none focus:border-white/30"
-          />
-        </div>
+        <div className="w-px h-4 bg-white/10" />
+        <span className="font-montserrat text-white/30 text-xs">USD → MXN</span>
+        <input type="number" value={tc} min={1} step={0.1}
+          onChange={e => setTc(Number(e.target.value))}
+          className="w-16 bg-[#0F0F13] border border-white/10 rounded-lg px-2 py-1.5
+                     text-white text-sm font-montserrat text-center focus:outline-none focus:border-white/30" />
       </div>
 
       {/* Productos */}
-      <div className="flex flex-col gap-3 mb-4">
-        {calcs.map((r, i) => {
-          const tieneData = r.nombre || r.piezas || r.paquetes || r.precio
-          return (
-            <div key={r.id} className="bg-[#1A1A24] border border-white/6 rounded-xl px-4 py-3">
-              {/* Header row */}
-              <div className="flex items-center gap-2 mb-3">
-                <span className="font-montserrat text-white/20 text-xs w-5 text-center">{i + 1}</span>
-                <input
-                  type="text" value={r.nombre} placeholder="Nombre del producto…"
-                  onChange={e => update(r.id, 'nombre', e.target.value)}
-                  className="flex-1 bg-transparent text-white/80 text-sm font-montserrat
-                             placeholder-white/20 focus:outline-none border-b border-white/10
-                             focus:border-white/30 pb-0.5"
-                />
-                {rows.length > 1 && (
-                  <button onClick={() => removeRow(r.id)}
-                    className="text-white/15 hover:text-red-400 transition-colors text-lg leading-none">×</button>
-                )}
-              </div>
+      <div className="bg-[#1A1A24] border border-white/6 rounded-xl overflow-hidden mb-3">
 
-              {/* Input grid */}
-              <div className="grid grid-cols-3 gap-2 mb-3">
-                {[
-                  { label: 'Pzas/paquete', field: 'piezas', placeholder: '24' },
-                  { label: 'Paquetes',     field: 'paquetes', placeholder: '1' },
-                ].map(({ label, field, placeholder }) => (
-                  <div key={field}>
-                    <label className="font-montserrat text-white/30 text-[10px] block mb-1">{label}</label>
-                    <input
-                      type="number" value={r[field]} placeholder={placeholder}
-                      onChange={e => update(r.id, field, e.target.value)}
-                      className="w-full bg-[#0F0F13] border border-white/10 rounded-lg px-2 py-2
-                                 text-white text-sm font-montserrat placeholder-white/15
-                                 focus:outline-none focus:border-white/30 text-center"
-                    />
+        {/* Column headers — desktop only */}
+        <div className="hidden md:grid grid-cols-[1.5rem_1fr_5rem_5rem_7rem_6rem_6rem_6rem_1.5rem]
+                        gap-2 px-3 py-1.5 border-b border-white/5">
+          {['#','Producto','Pzas/paq','Paquetes','Precio','Costo/u','P.público','Inversión',''].map((h, i) => (
+            <span key={i} className="font-montserrat text-white/20 text-[10px] text-center first:text-left last:text-right">
+              {h}
+            </span>
+          ))}
+        </div>
+
+        <div className="divide-y divide-white/5">
+          {calcs.map((r, i) => {
+            const hasData = r.totalUnidades > 0 && r.costoUnit > 0
+            return (
+              <div key={r.id} className="px-3 py-2.5">
+
+                {/* Mobile layout */}
+                <div className="md:hidden">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="font-montserrat text-white/20 text-[10px] w-4 flex-shrink-0">{i + 1}</span>
+                    <input type="text" value={r.nombre} placeholder="Nombre del producto…"
+                      onChange={e => update(r.id, 'nombre', e.target.value)}
+                      className="flex-1 bg-transparent text-white/80 text-sm font-montserrat
+                                 placeholder-white/20 focus:outline-none border-b border-white/8
+                                 focus:border-white/25 pb-0.5" />
+                    {rows.length > 1 && (
+                      <button onClick={() => removeRow(r.id)}
+                        className="text-white/15 hover:text-red-400 transition-colors text-base leading-none flex-shrink-0">×</button>
+                    )}
                   </div>
-                ))}
-                {/* Precio + divisa */}
-                <div>
-                  <label className="font-montserrat text-white/30 text-[10px] block mb-1">Precio paquete</label>
-                  <div className="flex gap-1">
-                    <input
-                      type="number" value={r.precio} placeholder={r.divisa === 'USD' ? '5' : '177'}
-                      onChange={e => update(r.id, 'precio', e.target.value)}
-                      className="flex-1 min-w-0 bg-[#0F0F13] border border-white/10 rounded-lg px-2 py-2
-                                 text-white text-sm font-montserrat placeholder-white/15
-                                 focus:outline-none focus:border-white/30 text-center"
-                    />
-                    <button
-                      onClick={() => update(r.id, 'divisa', r.divisa === 'MXN' ? 'USD' : 'MXN')}
-                      className={`px-2 py-1 rounded-lg text-[10px] font-montserrat font-bold border transition-colors flex-shrink-0
-                                  ${r.divisa === 'USD'
-                                    ? 'border-blue-500/40 bg-blue-500/10 text-blue-400'
-                                    : 'border-white/15 bg-white/5 text-white/30'}`}>
-                      {r.divisa}
-                    </button>
+                  <div className="flex gap-1.5 items-center pl-6">
+                    <div className="flex-1">
+                      <p className="font-montserrat text-white/20 text-[9px] mb-0.5 text-center">Pzas/paq</p>
+                      <input type="number" value={r.piezas} placeholder="24"
+                        onChange={e => update(r.id, 'piezas', e.target.value)}
+                        className={INPUT} />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-montserrat text-white/20 text-[9px] mb-0.5 text-center">Paquetes</p>
+                      <input type="number" value={r.paquetes} placeholder="1"
+                        onChange={e => update(r.id, 'paquetes', e.target.value)}
+                        className={INPUT} />
+                    </div>
+                    <div className="flex-[2]">
+                      <p className="font-montserrat text-white/20 text-[9px] mb-0.5 text-center">Precio</p>
+                      <div className="flex gap-1">
+                        <input type="number" value={r.precio} placeholder={r.divisa === 'USD' ? '5.00' : '177'}
+                          onChange={e => update(r.id, 'precio', e.target.value)}
+                          className={INPUT + ' flex-1 min-w-0'} />
+                        <button
+                          onClick={() => update(r.id, 'divisa', r.divisa === 'MXN' ? 'USD' : 'MXN')}
+                          className={`px-1.5 py-1.5 rounded-lg text-[9px] font-montserrat font-bold border
+                                      transition-colors flex-shrink-0
+                                      ${r.divisa === 'USD'
+                                        ? 'border-blue-500/40 bg-blue-500/10 text-blue-400'
+                                        : 'border-white/12 bg-white/4 text-white/25'}`}>
+                          {r.divisa}
+                        </button>
+                      </div>
+                    </div>
                   </div>
+                  {hasData && (
+                    <div className="pl-6 mt-1.5 flex gap-2.5 flex-wrap">
+                      <Chip label={`${r.totalUnidades}u`} />
+                      <Chip label={`Costo ${fmt(r.costoUnit)}`} />
+                      <Chip label={`Público ${fmt(r.precioPublico)}`} rose />
+                      <Chip label={`Inv. ${fmt(r.inversion)}`} />
+                      <Chip label={`+${fmt(r.gananciaTotal)}`} green />
+                    </div>
+                  )}
                   {r.divisa === 'USD' && r.precio && (
-                    <p className="font-montserrat text-white/25 text-[10px] mt-1 text-right">
-                      ≈ {fmt(Number(r.precio) * tc)} MXN
+                    <p className="font-montserrat text-white/20 text-[9px] pl-6 mt-1">
+                      ≈ {fmt(Number(r.precio) * tc)} MXN por paquete
                     </p>
                   )}
                 </div>
-              </div>
 
-              {/* Resultados */}
-              {tieneData && (
-                <div className="border-t border-white/5 pt-3 grid grid-cols-2 gap-x-4 gap-y-1.5">
-                  <ResultRow label="Total unidades" value={r.totalUnidades > 0 ? r.totalUnidades : '—'} mono />
-                  <ResultRow label="Costo unitario" value={fmt(r.costoUnit)} />
-                  <ResultRow label="Precio público" value={fmt(r.precioPublico)} highlight />
-                  <ResultRow label="Ganancia unit." value={fmt(r.gananciaUnit)} />
-                  <ResultRow label="Inversión total" value={fmt(r.inversion)} />
-                  <ResultRow label="Ganancia total" value={fmt(r.gananciaTotal)} accent />
+                {/* Desktop layout — table row */}
+                <div className="hidden md:grid grid-cols-[1.5rem_1fr_5rem_5rem_7rem_6rem_6rem_6rem_1.5rem]
+                                gap-2 items-center">
+                  <span className="font-montserrat text-white/20 text-[10px]">{i + 1}</span>
+                  <input type="text" value={r.nombre} placeholder="Nombre…"
+                    onChange={e => update(r.id, 'nombre', e.target.value)}
+                    className="bg-transparent text-white/80 text-xs font-montserrat
+                               placeholder-white/15 focus:outline-none border-b border-transparent
+                               focus:border-white/20 pb-0.5" />
+                  <input type="number" value={r.piezas} placeholder="24"
+                    onChange={e => update(r.id, 'piezas', e.target.value)}
+                    className={INPUT} />
+                  <input type="number" value={r.paquetes} placeholder="1"
+                    onChange={e => update(r.id, 'paquetes', e.target.value)}
+                    className={INPUT} />
+                  <div className="flex gap-1">
+                    <input type="number" value={r.precio} placeholder={r.divisa === 'USD' ? '5.00' : '177'}
+                      onChange={e => update(r.id, 'precio', e.target.value)}
+                      className={INPUT + ' flex-1 min-w-0'} />
+                    <button
+                      onClick={() => update(r.id, 'divisa', r.divisa === 'MXN' ? 'USD' : 'MXN')}
+                      className={`px-1.5 rounded-lg text-[9px] font-montserrat font-bold border
+                                  transition-colors flex-shrink-0
+                                  ${r.divisa === 'USD'
+                                    ? 'border-blue-500/40 bg-blue-500/10 text-blue-400'
+                                    : 'border-white/12 bg-white/4 text-white/25'}`}>
+                      {r.divisa}
+                    </button>
+                  </div>
+                  <span className="font-montserrat text-white/50 text-xs text-center">
+                    {hasData ? fmt(r.costoUnit) : '—'}
+                  </span>
+                  <span className={`font-montserrat text-xs text-center font-semibold
+                                    ${hasData ? 'text-pop-rose' : 'text-white/20'}`}>
+                    {hasData ? fmt(r.precioPublico) : '—'}
+                  </span>
+                  <span className="font-montserrat text-white/50 text-xs text-center">
+                    {hasData ? fmt(r.inversion) : '—'}
+                  </span>
+                  {rows.length > 1
+                    ? <button onClick={() => removeRow(r.id)}
+                        className="text-white/12 hover:text-red-400 transition-colors text-base leading-none text-right">×</button>
+                    : <span />
+                  }
                 </div>
-              )}
-            </div>
-          )
-        })}
+
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="px-3 py-2 border-t border-white/5">
+          <button onClick={addRow}
+            className="font-montserrat text-white/25 text-xs hover:text-white/45
+                       transition-colors flex items-center gap-1">
+            <span className="text-base leading-none">+</span> Agregar producto
+          </button>
+        </div>
       </div>
 
-      {/* Add row */}
-      <button onClick={addRow}
-        className="w-full border border-dashed border-white/15 rounded-xl py-3
-                   text-white/25 font-montserrat text-sm hover:border-white/30
-                   hover:text-white/40 transition-colors mb-6">
-        + Agregar producto
-      </button>
-
-      {/* Ajustes del pedido */}
+      {/* Ajustes + Resumen */}
       {subtotalProductos > 0 && (
-        <div className="bg-[#1A1A24] border border-white/6 rounded-xl px-4 py-3 mb-4">
-          <p className="font-anton text-white/50 text-xs tracking-widest mb-3">AJUSTES DEL PEDIDO</p>
-          <div className="grid grid-cols-3 gap-2">
+        <div className="bg-[#1A1A24] border border-white/6 rounded-xl px-4 py-3">
+
+          {/* Ajustes */}
+          <p className="font-anton text-white/35 text-[10px] tracking-widest mb-2">AJUSTES DEL PEDIDO</p>
+          <div className="grid grid-cols-3 gap-2 mb-4">
             {[
-              { label: 'Descuento', key: 'descuento', val: descuento, set: setDescuento, sign: '−', color: 'text-emerald-400' },
-              { label: 'Envío',     key: 'envio',     val: envio,     set: setEnvio,     sign: '+', color: 'text-white/40' },
-              { label: 'Imp. importación', key: 'impuesto', val: impuesto, set: setImpuesto, sign: '+', color: 'text-white/40' },
-            ].map(({ label, key, val, set, sign, color }) => (
-              <div key={key}>
-                <label className="font-montserrat text-white/30 text-[10px] block mb-1">
-                  <span className={`${color} mr-0.5`}>{sign}</span>{label}
-                </label>
-                <input
-                  type="number" value={val} min={0} placeholder="0"
+              { label: '− Descuento', val: descuento, set: setDescuento, accent: 'focus:border-emerald-500/40' },
+              { label: '+ Envío',     val: envio,     set: setEnvio,     accent: '' },
+              { label: '+ Imp. imp.', val: impuesto,  set: setImpuesto,  accent: '' },
+            ].map(({ label, val, set, accent }) => (
+              <div key={label}>
+                <label className="font-montserrat text-white/25 text-[10px] block mb-1">{label}</label>
+                <input type="number" value={val} min={0} placeholder="0"
                   onChange={e => set(e.target.value)}
-                  className="w-full bg-[#0F0F13] border border-white/10 rounded-lg px-2 py-2
-                             text-white text-sm font-montserrat placeholder-white/15
-                             focus:outline-none focus:border-white/30 text-center"
-                />
+                  className={`w-full bg-[#0F0F13] border border-white/8 rounded-lg px-2 py-1.5
+                              text-white text-xs font-montserrat placeholder-white/12
+                              focus:outline-none ${accent || 'focus:border-white/25'} text-center`} />
               </div>
             ))}
           </div>
-        </div>
-      )}
 
-      {/* Resumen financiero */}
-      {subtotalProductos > 0 && (
-        <div className="bg-[#1A1A24] border border-white/6 rounded-xl px-4 py-4">
-          <p className="font-anton text-white/50 text-sm tracking-widest mb-3">RESUMEN DEL PEDIDO</p>
-          <div className="flex flex-col gap-2">
-            <SummaryRow label="Subtotal productos"         value={fmt(subtotalProductos)} />
-            {ajDescuento > 0 && <SummaryRow label="Descuento"             value={`− ${fmt(ajDescuento)}`} green />}
-            {ajEnvio     > 0 && <SummaryRow label="Envío"                 value={`+ ${fmt(ajEnvio)}`} />}
-            {ajImpuesto  > 0 && <SummaryRow label="Imp. importación"      value={`+ ${fmt(ajImpuesto)}`} />}
+          {/* Resumen */}
+          <div className="border-t border-white/6 pt-3 space-y-1.5">
+            <p className="font-anton text-white/35 text-[10px] tracking-widest mb-2">RESUMEN</p>
+            <SRow label="Subtotal productos" value={fmt(subtotalProductos)} />
+            {ajDescuento > 0 && <SRow label="Descuento" value={`− ${fmt(ajDescuento)}`} green />}
+            {ajEnvio     > 0 && <SRow label="Envío"     value={`+ ${fmt(ajEnvio)}`} />}
+            {ajImpuesto  > 0 && <SRow label="Imp. importación" value={`+ ${fmt(ajImpuesto)}`} />}
             {(ajDescuento > 0 || ajEnvio > 0 || ajImpuesto > 0) && (
-              <div className="border-t border-white/5 pt-2 mt-0.5">
-                <SummaryRow label="Costo real total"       value={fmt(costoReal)} highlight />
+              <div className="border-t border-white/6 pt-1.5">
+                <SRow label="Costo real" value={fmt(costoReal)} bold />
               </div>
             )}
-            <div className={`${(ajDescuento > 0 || ajEnvio > 0 || ajImpuesto > 0) ? '' : 'border-t border-white/5 pt-2 mt-0.5'}`}>
-              <SummaryRow label="Ingreso esperado (ventas)" value={fmt(totalIngreso)} />
-            </div>
-            <div className="border-t border-white/5 pt-2 mt-1">
-              <SummaryRow label="Ganancia bruta esperada"  value={fmt(totalGanancia)} highlight />
-              <SummaryRow label="Retorno sobre inversión"
-                value={costoReal > 0 ? `${((totalGanancia / costoReal) * 100).toFixed(1)}%` : '—'}
-                accent />
+            <SRow label="Ingreso esperado" value={fmt(totalIngreso)} />
+            <div className="border-t border-white/6 pt-1.5 flex justify-between items-center">
+              <div>
+                <p className="font-montserrat text-white/35 text-xs">Ganancia bruta</p>
+                {costoReal > 0 && (
+                  <p className="font-montserrat text-white/25 text-[10px]">
+                    ROI {((totalGanancia / costoReal) * 100).toFixed(1)}%
+                  </p>
+                )}
+              </div>
+              <span className={`font-anton text-2xl ${totalGanancia >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                {fmt(totalGanancia)}
+              </span>
             </div>
           </div>
         </div>
@@ -236,24 +266,23 @@ export default function Cotizador() {
   )
 }
 
-function ResultRow({ label, value, highlight, accent, mono }) {
+function Chip({ label, rose, green }) {
   return (
-    <div className="flex justify-between items-center">
-      <span className="font-montserrat text-white/30 text-[11px]">{label}</span>
-      <span className={`font-montserrat text-[11px] font-semibold
-        ${highlight ? 'text-pop-rose' : accent ? 'text-emerald-400' : mono ? 'text-white/60' : 'text-white/60'}`}>
-        {value}
-      </span>
-    </div>
+    <span className={`font-montserrat text-[10px] px-1.5 py-0.5 rounded-md
+      ${rose  ? 'text-pop-rose bg-pop-rose/8'
+      : green ? 'text-emerald-400 bg-emerald-400/8'
+      :         'text-white/35 bg-white/4'}`}>
+      {label}
+    </span>
   )
 }
 
-function SummaryRow({ label, value, highlight, accent, green }) {
+function SRow({ label, value, green, bold }) {
   return (
-    <div className="flex justify-between items-center py-0.5">
-      <span className="font-montserrat text-white/40 text-sm">{label}</span>
-      <span className={`font-anton text-base
-        ${highlight ? 'text-white' : accent ? 'text-emerald-400' : green ? 'text-emerald-400' : 'text-white/60'}`}>
+    <div className="flex justify-between items-center">
+      <span className="font-montserrat text-white/35 text-xs">{label}</span>
+      <span className={`font-montserrat text-sm font-semibold
+        ${green ? 'text-emerald-400' : bold ? 'text-white' : 'text-white/55'}`}>
         {value}
       </span>
     </div>
