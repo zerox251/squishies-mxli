@@ -55,6 +55,7 @@ model Pedido {
   proveedorId  Int?
   proveedor    Proveedor? @relation(fields: [proveedorId], references: [id])
   total        Float
+  montoPagado  Float      @default(0)
   status       String     @default("pendiente")
   notas        String?
   fechaPedido  DateTime?
@@ -62,6 +63,18 @@ model Pedido {
   imagen       String?
   documento    String?
   gasto        Gasto?
+  pagos        Pago[]
+}
+
+model Pago {
+  id          Int      @id @default(autoincrement())
+  monto       Float
+  fecha       DateTime
+  metodoPago  String?
+  nota        String?
+  pedidoId    Int
+  creadoEn    DateTime @default(now())
+  pedido      Pedido   @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
 }
 
 model Gasto {

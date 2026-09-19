@@ -115,6 +115,12 @@ export default function Pedidos() {
   const [savingProv,   setSavingProv]   = useState(false)
   const provDropRef = useRef()
 
+  // pagos parciales
+  const [pagosModal,   setPagosModal]   = useState([])   // [{id, monto, fecha, metodoPago, nota, _new?, _edited?}]
+  const [pagosDelete,  setPagosDelete]  = useState([])   // ids a borrar
+  const [nuevoPago,    setNuevoPago]    = useState(null) // null=cerrado, {}=abierto
+  const PAGO_EMPTY = { monto: '', fecha: new Date().toISOString().slice(0,10), metodoPago: '', nota: '' }
+
   const fileRef = useRef()
   const docRef  = useRef()
 
@@ -150,6 +156,7 @@ export default function Pedidos() {
   function openNew() {
     setForm({ ...EMPTY }); setEditId(null); setImgPreview(null)
     setProvOpen(false); setCreandoProv(false); setNuevoProv({ nombre: '', pais: 'MX' })
+    setPagosModal([]); setPagosDelete([]); setNuevoPago(null)
     setModal(true)
   }
   function openEdit(p) {
@@ -163,6 +170,9 @@ export default function Pedidos() {
     })
     setImgPreview(p.imagen || null)
     setProvOpen(false); setCreandoProv(false)
+    setPagosModal([]); setPagosDelete([]); setNuevoPago(null)
+    // cargar pagos existentes
+    apiFetch(`/api/pagos?pedidoId=${p.id}`).then(r => r.json()).then(setPagosModal)
     setEditId(p.id); setModal(true)
   }
 
@@ -175,6 +185,22 @@ export default function Pedidos() {
     await loadProvs()
     setForm(f => ({ ...f, proveedorId: creado.id }))
     setCreandoProv(false); setProvOpen(false); setNuevoProv({ nombre: '', pais: 'MX' }); setSavingProv(false)
+  }
+
+  // ── pagos handlers ──────────────────────────────────────────────────────────
+  function addPago() {
+    if (!nuevoPago?.monto || !nuevoPago?.fecha) return
+    const pago = {
+      id: `_new_${Date.now()}`, _new: true,
+      monto: Number(nuevoPago.monto), fecha: nuevoPago.fecha,
+      metodoPago: nuevoPago.metodoPago || null, nota: nuevoPago.nota || null,
+    }
+    setPagosModal(prev => [...prev, pago].sort((a, b) => a.fecha.localeCompare(b.fecha)))
+    setNuevoPago(null)
+  }
+  function deletePago(id) {
+    if (!String(id).startsWith('_new_')) setPagosDelete(prev => [...prev, id])
+    setPagosModal(prev => prev.filter(p => p.id !== id))
   }
 
   // ── file handlers ───────────────────────────────────────────────────────────
@@ -208,8 +234,21 @@ export default function Pedidos() {
       status: form.status, imagen: imagenUrl ?? null,
       documento: uploadedDocs.length ? JSON.stringify(uploadedDocs) : null,
     }
-    await apiFetch(editId ? `/api/pedidos/${editId}` : '/api/pedidos',
+    const res    = await apiFetch(editId ? `/api/pedidos/${editId}` : '/api/pedidos',
       { method: editId ? 'PUT' : 'POST', body: JSON.stringify(body) })
+    const pedido = await res.json()
+    const pid    = pedido.id
+
+    // persistir pagos en paralelo
+    await Promise.all([
+      ...pagosDelete.map(id => apiFetch(`/api/pagos/${id}`, { method: 'DELETE' })),
+      ...pagosModal.filter(p => p._new).map(p =>
+        apiFetch('/api/pagos', { method: 'POST', body: JSON.stringify({
+          pedidoId: pid, monto: p.monto, fecha: p.fecha,
+          metodoPago: p.metodoPago, nota: p.nota,
+        }) })
+      ),
+    ])
     setSaving(false); setModal(false); fetchPedidos()
   }
 
@@ -219,6 +258,14 @@ export default function Pedidos() {
   }
 
   // ── derived ─────────────────────────────────────────────────────────────────
+  // auto-status según saldo
+  const totalPagado = pagosModal.reduce((s, p) => s + (Number(p.monto) || 0), 0)
+  const saldo       = modal ? (Number(form.total) || 0) - totalPagado : 0
+  useEffect(() => {
+    if (!modal || !form.total) return
+    setForm(f => ({ ...f, status: saldo <= 0 ? 'pagado' : 'pendiente' }))
+  }, [saldo, modal]) // eslint-disable-line
+
   const grupos = groupByMonth(pedidos)
   const deudaTotal = pedidos.filter(p => p.status === 'pendiente').reduce((s, p) => s + p.total, 0)
   const provSeleccionado = form.proveedorId ? proveedores.find(p => p.id === form.proveedorId) : null
@@ -552,6 +599,111 @@ export default function Pedidos() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* ── Pagos parciales ───────────────────────────────────────── */}
+              <div className="border-t border-white/6 pt-3">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="font-montserrat text-white/40 text-xs tracking-wider">PAGOS</p>
+                  {!nuevoPago && (
+                    <button type="button" onClick={() => setNuevoPago({ ...PAGO_EMPTY })}
+                      className="font-montserrat text-xs text-pop-coral hover:text-white transition-colors">
+                      + Agregar pago
+                    </button>
+                  )}
+                </div>
+
+                {/* Lista pagos */}
+                {pagosModal.length === 0 && !nuevoPago && (
+                  <p className="font-montserrat text-white/20 text-xs text-center py-2">Sin pagos registrados</p>
+                )}
+                {pagosModal.map(p => (
+                  <div key={p.id} className="flex items-center gap-2 mb-1.5 bg-[#0F0F13]
+                                              border border-white/6 rounded-lg px-3 py-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-montserrat text-white/80 text-sm font-medium">
+                          {fmt(p.monto)}
+                        </span>
+                        {p.metodoPago && (
+                          <span className="font-montserrat text-white/30 text-xs">{p.metodoPago}</span>
+                        )}
+                      </div>
+                      <div className="flex gap-2 items-center">
+                        <span className="font-montserrat text-white/25 text-[10px]">
+                          {fmtFecha(typeof p.fecha === 'string' ? p.fecha : p.fecha?.toISOString?.())}
+                        </span>
+                        {p.nota && <span className="font-montserrat text-white/20 text-[10px] truncate">{p.nota}</span>}
+                      </div>
+                    </div>
+                    <button type="button" onClick={() => deletePago(p.id)}
+                      className="text-white/15 hover:text-red-400 text-xs transition-colors flex-shrink-0">✕</button>
+                  </div>
+                ))}
+
+                {/* Formulario nuevo pago */}
+                {nuevoPago && (
+                  <div className="bg-[#0F0F13] border border-white/10 rounded-xl p-3 flex flex-col gap-2 mb-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="font-montserrat text-white/30 text-[10px] mb-0.5 block">Monto ($)</label>
+                        <input type="number" value={nuevoPago.monto} placeholder="0"
+                          onChange={e => setNuevoPago(f => ({ ...f, monto: e.target.value }))}
+                          className="w-full bg-[#14141c] border border-white/8 rounded-lg px-2 py-2
+                                     text-white text-sm font-montserrat placeholder-white/20
+                                     focus:outline-none focus:border-pop-coral/40" />
+                      </div>
+                      <div>
+                        <label className="font-montserrat text-white/30 text-[10px] mb-0.5 block">Fecha</label>
+                        <input type="date" value={nuevoPago.fecha}
+                          onChange={e => setNuevoPago(f => ({ ...f, fecha: e.target.value }))}
+                          className="w-full bg-[#14141c] border border-white/8 rounded-lg px-2 py-2
+                                     text-white text-sm font-montserrat [color-scheme:dark]
+                                     focus:outline-none focus:border-pop-coral/40" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="font-montserrat text-white/30 text-[10px] mb-0.5 block">Método (opc.)</label>
+                        <input type="text" value={nuevoPago.metodoPago} placeholder="Transferencia…"
+                          onChange={e => setNuevoPago(f => ({ ...f, metodoPago: e.target.value }))}
+                          className="w-full bg-[#14141c] border border-white/8 rounded-lg px-2 py-2
+                                     text-white text-sm font-montserrat placeholder-white/20
+                                     focus:outline-none focus:border-pop-coral/40" />
+                      </div>
+                      <div>
+                        <label className="font-montserrat text-white/30 text-[10px] mb-0.5 block">Nota (opc.)</label>
+                        <input type="text" value={nuevoPago.nota} placeholder="Anticipo…"
+                          onChange={e => setNuevoPago(f => ({ ...f, nota: e.target.value }))}
+                          className="w-full bg-[#14141c] border border-white/8 rounded-lg px-2 py-2
+                                     text-white text-sm font-montserrat placeholder-white/20
+                                     focus:outline-none focus:border-pop-coral/40" />
+                      </div>
+                    </div>
+                    <div className="flex gap-2 justify-end mt-1">
+                      <button type="button" onClick={() => setNuevoPago(null)}
+                        className="font-montserrat text-xs text-white/30 hover:text-white/60 px-3 py-1.5 transition-colors">
+                        Cancelar
+                      </button>
+                      <button type="button" onClick={addPago}
+                        disabled={!nuevoPago.monto || !nuevoPago.fecha}
+                        className="font-montserrat text-xs font-bold bg-pop-coral text-white
+                                   px-4 py-1.5 rounded-lg disabled:opacity-40 transition-colors">
+                        Agregar
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Saldo pendiente */}
+                {form.total && (
+                  <div className="flex items-center justify-between px-1 mt-1">
+                    <span className="font-montserrat text-white/30 text-xs">Saldo pendiente</span>
+                    <span className={`font-montserrat font-bold text-sm ${saldo <= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {fmt(Math.max(0, saldo))}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Documentos */}
