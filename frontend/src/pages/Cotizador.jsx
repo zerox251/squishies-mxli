@@ -43,13 +43,14 @@ export default function Cotizador() {
       .catch(() => {})
   }, [])
 
-  const [vincularRow,  setVincularRow]  = useState(null)
-  const [squishies,    setSquishies]    = useState([])
-  const [squishyId,    setSquishyId]    = useState('')
-  const [squishySearch,setSquishySearch]= useState('')
-  const [creatingNew,  setCreatingNew]  = useState(false)
-  const [newNombre,    setNewNombre]    = useState('')
-  const [saving,       setSaving]       = useState(false)
+  const [vincularRow,     setVincularRow]     = useState(null)
+  const [squishies,       setSquishies]       = useState([])
+  const [squishyId,       setSquishyId]       = useState('')
+  const [squishySearch,   setSquishySearch]   = useState('')
+  const [creatingNew,     setCreatingNew]     = useState(false)
+  const [newNombre,       setNewNombre]       = useState('')
+  const [newDescripcion,  setNewDescripcion]  = useState('')
+  const [saving,          setSaving]          = useState(false)
 
   function removeRow(id) { setRows(r => r.filter(x => x.id !== id)) }
   function update(id, field, value)   { setRows(r => r.map(x => x.id === id ? { ...x, [field]: value } : x)) }
@@ -61,6 +62,7 @@ export default function Cotizador() {
     setSquishySearch('')
     setCreatingNew(false)
     setNewNombre('')
+    setNewDescripcion('')
     apiFetch('/api/productos').then(r => r.json()).then(setSquishies)
   }
 
@@ -73,6 +75,7 @@ export default function Cotizador() {
           method: 'POST',
           body: JSON.stringify({
             nombre: newNombre.trim(),
+            descripcion: newDescripcion.trim() || null,
             precio: vincularRow.precioPublico,
             costo: vincularRow.costoUnit,
             stock: 0,
@@ -562,7 +565,7 @@ export default function Cotizador() {
 
                 {/* Crear nuevo */}
                 <button
-                  onClick={() => { setCreatingNew(true); setNewNombre(squishySearch) }}
+                  onClick={() => { setCreatingNew(true); setNewNombre(vincularRow.nombre || squishySearch); setNewDescripcion('') }}
                   className="font-montserrat text-xs text-white/25 hover:text-emerald-400/70
                              transition-colors flex items-center gap-1 mb-4">
                   <span className="text-base leading-none">+</span> Crear nuevo producto
@@ -582,14 +585,28 @@ export default function Cotizador() {
               </>
             ) : (
               <>
-                <div className="mb-3">
-                  <label className="font-montserrat text-white/40 text-xs mb-1 block">Nombre del nuevo producto</label>
+                <div className="mb-2">
+                  <label className="font-montserrat text-white/40 text-xs mb-1 block">Nombre</label>
                   <input
                     type="text"
                     value={newNombre}
                     onChange={e => setNewNombre(e.target.value)}
                     placeholder="Squishy unicornio…"
                     autoFocus
+                    className="w-full bg-[#0F0F13] border border-white/10 rounded-lg px-3 py-2.5
+                               text-white text-sm font-montserrat placeholder-white/20
+                               focus:outline-none focus:border-emerald-500/40"
+                  />
+                </div>
+                <div className="mb-3">
+                  <label className="font-montserrat text-white/40 text-xs mb-1 block">
+                    Descripción <span className="text-white/20">(opcional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={newDescripcion}
+                    onChange={e => setNewDescripcion(e.target.value)}
+                    placeholder="Pack de 24 pzas, colores surtidos…"
                     className="w-full bg-[#0F0F13] border border-white/10 rounded-lg px-3 py-2.5
                                text-white text-sm font-montserrat placeholder-white/20
                                focus:outline-none focus:border-emerald-500/40"
