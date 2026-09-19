@@ -78,7 +78,7 @@ export default function Cotizador() {
             descripcion: newDescripcion.trim() || null,
             precio: vincularRow.precioPublico,
             costo: vincularRow.costoUnit,
-            stock: 0,
+            stock: vincularRow.totalUnidades || 0,
           }),
         })
       } else {
@@ -616,7 +616,7 @@ export default function Cotizador() {
                 <div className="bg-[#0F0F13] border border-white/6 rounded-lg px-3 py-2 mb-4 flex gap-4 flex-wrap">
                   <span className="font-montserrat text-white/25 text-xs">Costo <span className="text-white/50">{fmt(vincularRow.costoUnit)}</span></span>
                   <span className="font-montserrat text-white/25 text-xs">Precio <span className="text-pop-rose">{fmt(vincularRow.precioPublico)}</span></span>
-                  <span className="font-montserrat text-white/25 text-xs">Stock <span className="text-white/40">0</span></span>
+                  <span className="font-montserrat text-white/25 text-xs">Stock <span className="text-white/40">{vincularRow.totalUnidades || 0} uds</span></span>
                 </div>
 
                 <div className="flex gap-2">
