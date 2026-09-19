@@ -125,9 +125,9 @@ export default function Cotizador() {
                     <span className="font-montserrat text-white/20 text-[10px] w-4 flex-shrink-0">{i + 1}</span>
                     <input type="text" value={r.nombre} placeholder="Nombre del producto…"
                       onChange={e => update(r.id, 'nombre', e.target.value)}
-                      className="flex-1 bg-[#0F0F13] border border-white/8 rounded-lg text-white/80 text-sm
+                      className="flex-1 bg-[#0F0F13] border border-white/25 rounded-lg text-white/80 text-sm
                                  font-montserrat placeholder-white/20 focus:outline-none
-                                 focus:border-white/25 py-1.5 px-2" />
+                                 focus:border-white/50 py-1.5 px-2" />
                     {rows.length > 1 && (
                       <button onClick={() => removeRow(r.id)}
                         className="text-white/15 hover:text-red-400 transition-colors text-base leading-none flex-shrink-0">×</button>
@@ -193,9 +193,9 @@ export default function Cotizador() {
                   <span className="font-montserrat text-white/20 text-[10px]">{i + 1}</span>
                   <input type="text" value={r.nombre} placeholder="Nombre…"
                     onChange={e => update(r.id, 'nombre', e.target.value)}
-                    className="w-full bg-[#0F0F13] border border-white/8 rounded-lg text-white/80 text-xs
+                    className="w-full bg-[#0F0F13] border border-white/25 rounded-lg text-white/80 text-xs
                                font-montserrat placeholder-white/20 focus:outline-none
-                               focus:border-white/25 py-1.5 px-2" />
+                               focus:border-white/50 py-1.5 px-2" />
                   <input type="number" value={r.piezas} placeholder="24"
                     onChange={e => update(r.id, 'piezas', e.target.value)}
                     className={INPUT} />
