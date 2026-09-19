@@ -155,6 +155,15 @@ export default function Cotizador() {
           const [, nombre, piezas, paquetes, precio, divisa] = cols
           imported.push({ id: id++, nombre, piezas, paquetes, precio, divisa: divisa || 'MXN' })
         }
+        // Restaurar ajustes del pedido
+        for (const line of lines) {
+          const cols = parseCSVLine(line)
+          const label = cols[0] || ''
+          const val   = parseFloat((cols[1] || '').replace(/[+\-$]/g, '')) || 0
+          if (label === 'Descuento')        setDescuento(String(val))
+          if (label === 'Envío')            setEnvio(String(val))
+          if (label === 'Imp. importación') setImpuesto(String(val))
+        }
         if (imported.length > 0) { setRows(imported); setNextId(id) }
       }
       reader.readAsText(file, 'utf-8')
