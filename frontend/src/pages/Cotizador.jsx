@@ -596,29 +596,31 @@ export default function Cotizador() {
                   />
                 </div>
 
-                {/* Lista filtrada */}
-                <div className="max-h-40 overflow-y-auto border border-white/8 rounded-lg mb-1">
-                  {squishies
-                    .filter(s => s.nombre.toLowerCase().includes(squishySearch.toLowerCase()))
-                    .map(s => (
-                      <button key={s.id} onClick={() => setSquishyId(String(s.id))}
-                        className={`w-full text-left px-3 py-2 font-montserrat text-sm transition-colors
-                                    border-b border-white/5 last:border-0
-                                    ${squishyId === String(s.id)
-                                      ? 'bg-emerald-500/10 text-emerald-300'
-                                      : 'text-white/60 hover:bg-white/5'}`}>
-                        {s.nombre}
-                        {s.stock > 0 && <span className="text-white/25 text-xs ml-2">{s.stock} uds</span>}
-                      </button>
-                    ))
-                  }
-                  {squishies.filter(s => s.nombre.toLowerCase().includes(squishySearch.toLowerCase())).length === 0 && (
-                    <p className="px-3 py-2.5 font-montserrat text-white/25 text-xs">Sin resultados</p>
-                  )}
-                </div>
+                {/* Lista filtrada — solo aparece al buscar */}
+                {squishySearch.trim() && (
+                  <div className="max-h-44 overflow-y-auto border border-white/8 rounded-lg mb-1">
+                    {squishies
+                      .filter(s => s.nombre.toLowerCase().includes(squishySearch.toLowerCase()))
+                      .map(s => (
+                        <button key={s.id} onClick={() => { setSquishyId(String(s.id)); setSquishySearch(s.nombre) }}
+                          className={`w-full text-left px-3 py-2.5 font-montserrat text-sm transition-colors
+                                      border-b border-white/5 last:border-0
+                                      ${squishyId === String(s.id)
+                                        ? 'bg-emerald-500/10 text-emerald-300'
+                                        : 'text-white/60 hover:bg-white/5'}`}>
+                          {s.nombre}
+                          {s.stock > 0 && <span className="text-white/25 text-xs ml-2">{s.stock} uds</span>}
+                        </button>
+                      ))
+                    }
+                    {squishies.filter(s => s.nombre.toLowerCase().includes(squishySearch.toLowerCase())).length === 0 && (
+                      <p className="px-3 py-2.5 font-montserrat text-white/25 text-xs">Sin resultados para "{squishySearch}"</p>
+                    )}
+                  </div>
+                )}
 
                 {squishyId && (
-                  <p className="font-montserrat text-emerald-400/60 text-[10px] mb-3">
+                  <p className="font-montserrat text-emerald-400/60 text-[10px] mt-1 mb-1">
                     ✓ Se actualizará costo ({fmt(vincularRow.costoUnit)}) y precio ({fmt(vincularRow.precioPublico)})
                   </p>
                 )}
