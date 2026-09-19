@@ -224,7 +224,7 @@ export default function Cotizador() {
       <div className="bg-[#1A1A24] border border-[#2a2a35] rounded-xl overflow-hidden mb-3">
 
         {/* Column headers — desktop only */}
-        <div className="hidden md:grid grid-cols-[1.5rem_1fr_5rem_5rem_7rem_6rem_6rem_5rem_5rem_1.5rem]
+        <div className="hidden md:grid grid-cols-[1.5rem_1fr_6rem_6rem_8rem_7rem_7rem_7rem_7rem_2rem]
                         gap-2 px-3 py-1.5 border-b border-white/5">
           {['#','Producto','Pzas/paq','Paquetes','Precio','Costo/u','P.público','Costo Total','Ajuste',''].map((h, i) => (
             <span key={i} className="font-montserrat text-white/20 text-[10px] text-center first:text-left last:text-right">
@@ -317,7 +317,7 @@ export default function Cotizador() {
                 </div>
 
                 {/* Desktop layout — table row */}
-                <div className="hidden md:grid grid-cols-[1.5rem_1fr_5rem_5rem_7rem_6rem_6rem_5rem_5rem_1.5rem]
+                <div className="hidden md:grid grid-cols-[1.5rem_1fr_6rem_6rem_8rem_7rem_7rem_7rem_7rem_2rem]
                                 gap-2 items-center">
                   <span className="font-montserrat text-white/20 text-[10px]">{i + 1}</span>
                   <input type="text" value={r.nombre} placeholder="Nombre…"

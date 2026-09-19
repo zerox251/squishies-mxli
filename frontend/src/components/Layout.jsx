@@ -10,7 +10,7 @@ export default function Layout() {
 
       {/* Contenido principal */}
       <main className="flex-1 pb-20 md:pb-6 md:pl-56">
-        <div className="max-w-2xl mx-auto px-4 pt-6 md:max-w-4xl">
+        <div className="max-w-2xl mx-auto px-4 pt-6 md:max-w-6xl">
           <Outlet />
         </div>
       </main>
