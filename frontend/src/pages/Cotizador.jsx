@@ -445,16 +445,20 @@ export default function Cotizador() {
                   {/* Columna Ajuste: flete + imp absorbido */}
                   <div className="text-center">
                     {hasData && ajusteNeto !== 0 ? (
-                      <>
+                      <div className="relative inline-flex items-center gap-1 group justify-center">
                         <span className="font-montserrat text-amber-400/70 text-xs">
                           {fmt((r.aEnvio || 0) + (r.aImpuesto || 0) - (r.aDescuento || 0))}
                         </span>
-                        <div className="flex flex-col gap-px mt-0.5">
-                          {r.aEnvio    > 0 && <span className="font-montserrat text-white/20 text-[9px]">flete {fmt(r.aEnvio)}</span>}
-                          {r.aImpuesto > 0 && <span className="font-montserrat text-white/20 text-[9px]">imp. {fmt(r.aImpuesto)}</span>}
-                          {r.aDescuento> 0 && <span className="font-montserrat text-emerald-500/40 text-[9px]">desc. −{fmt(r.aDescuento)}</span>}
+                        <span className="font-montserrat text-white/20 text-[9px] cursor-default select-none">ⓘ</span>
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5
+                                        bg-[#12121a] border border-white/10 rounded-lg px-2.5 py-2
+                                        opacity-0 group-hover:opacity-100 pointer-events-none
+                                        transition-opacity duration-150 z-20 whitespace-nowrap text-left shadow-xl">
+                          {r.aEnvio     > 0 && <p className="font-montserrat text-white/35 text-[10px]">Flete <span className="text-white/65 ml-1">{fmt(r.aEnvio)}</span></p>}
+                          {r.aImpuesto  > 0 && <p className="font-montserrat text-white/35 text-[10px]">Imp. <span className="text-white/65 ml-1">{fmt(r.aImpuesto)}</span></p>}
+                          {r.aDescuento > 0 && <p className="font-montserrat text-white/35 text-[10px]">Desc. <span className="text-emerald-400/70 ml-1">−{fmt(r.aDescuento)}</span></p>}
                         </div>
-                      </>
+                      </div>
                     ) : (
                       <span className="font-montserrat text-white/12 text-xs">—</span>
                     )}
