@@ -47,7 +47,7 @@ export default function Inventario() {
     load()
   }
 
-  const fmt = n => '$' + (Number(n) || 0).toLocaleString('es-MX')
+  const fmt = n => '$' + (Number(n) || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
   return (
     <div>
