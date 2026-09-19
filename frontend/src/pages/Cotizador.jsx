@@ -97,12 +97,16 @@ export default function Cotizador() {
   const totalGanancia = totalIngreso - costoReal
 
   function exportCSV() {
-    const header = ['#', 'Producto', 'Pzas/paq', 'Paquetes', 'Precio', 'Divisa', 'Costo/u (MXN)', 'P.público (MXN)', 'Inversión real (MXN)', 'Ganancia total (MXN)']
-    const rows = calcs.filter(r => r.totalUnidades > 0).map((r, i) => [
-      i + 1, r.nombre || '—', r.piezas, r.paquetes, r.precio, r.divisa,
-      r.costoUnit.toFixed(2), r.precioPublico.toFixed(2),
-      (r.inversionReal ?? r.inversion).toFixed(2), r.gananciaTotal.toFixed(2),
-    ])
+    const header = ['#', 'Producto', 'Pzas/paq', 'Paquetes', 'Precio', 'Divisa', 'Costo/u (MXN)', 'P.público (MXN)', 'Costo Total (MXN)', 'Ajuste (MXN)']
+    const rows = calcs.filter(r => r.totalUnidades > 0).map((r, i) => {
+      const ajuste = (r.aEnvio || 0) + (r.aImpuesto || 0) - (r.aDescuento || 0)
+      return [
+        i + 1, r.nombre || '—', r.piezas, r.paquetes, r.precio, r.divisa,
+        r.costoUnit.toFixed(2), r.precioPublico.toFixed(2),
+        (r.inversionReal ?? r.inversion).toFixed(2),
+        ajusteNeto !== 0 ? ajuste.toFixed(2) : '0.00',
+      ]
+    })
     const ajustes = [
       [], ['AJUSTES'], ['Subtotal productos', subtotalProductos.toFixed(2)],
       ...(ajDescuento > 0 ? [['Descuento', `-${ajDescuento.toFixed(2)}`]] : []),
@@ -134,18 +138,29 @@ export default function Cotizador() {
     doc.setFontSize(9)
     doc.text(`Margen: ${margen}%   TC USD→MXN: ${tc}   Fecha: ${fecha}`, 14, 23)
 
-    const productRows = calcs.filter(r => r.totalUnidades > 0).map((r, i) => [
-      i + 1, r.nombre || '—', r.piezas, r.paquetes,
-      `${r.precio} ${r.divisa}`,
-      `$${r.costoUnit.toFixed(2)}`,
-      `$${r.precioPublico.toFixed(2)}`,
-      `$${(r.inversionReal ?? r.inversion).toFixed(2)}`,
-      `$${r.gananciaTotal.toFixed(2)}`,
-    ])
+    const productRows = calcs.filter(r => r.totalUnidades > 0).map((r, i) => {
+      const ajuste = (r.aEnvio || 0) + (r.aImpuesto || 0) - (r.aDescuento || 0)
+      const ajusteParts = [
+        r.aEnvio     > 0 ? `Flete $${(r.aEnvio).toFixed(2)}`    : '',
+        r.aImpuesto  > 0 ? `Imp. $${(r.aImpuesto).toFixed(2)}`  : '',
+        r.aDescuento > 0 ? `Desc. -$${(r.aDescuento).toFixed(2)}` : '',
+      ].filter(Boolean).join('\n')
+      return [
+        i + 1,
+        r.nombre || '—',
+        r.piezas,
+        r.paquetes,
+        `${r.precio} ${r.divisa}`,
+        `$${r.costoUnit.toFixed(2)}`,
+        `$${r.precioPublico.toFixed(2)}`,
+        `$${(r.inversionReal ?? r.inversion).toFixed(2)}`,
+        ajusteNeto !== 0 ? (ajuste !== 0 ? `$${ajuste.toFixed(2)}${ajusteParts ? '\n' + ajusteParts : ''}` : '—') : '—',
+      ]
+    })
 
     autoTable(doc, {
       startY: 28,
-      head: [['#', 'Producto', 'Pzas/paq', 'Paquetes', 'Precio', 'Costo/u', 'P.público', 'Inversión', 'Ganancia']],
+      head: [['#', 'Producto', 'Pzas/paq', 'Paquetes', 'Precio', 'Costo/u', 'P.público', 'Costo Total', 'Ajuste']],
       body: productRows,
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [30, 30, 40], textColor: 255 },
