@@ -394,7 +394,7 @@ export default function Kits() {
 
       {/* ── Modal picker de productos ─────────────────────────────────────────── */}
       {pickerOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+        <div className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4" style={{ zIndex: 60 }}>
           <div className="absolute inset-0" onClick={() => setPickerOpen(false)} />
           <div className="relative bg-[#1A1A24] border border-white/10
                           rounded-2xl w-full max-w-md
