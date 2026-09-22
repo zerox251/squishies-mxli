@@ -26,6 +26,8 @@ model Squishy {
   creadoEn    DateTime    @default(now())
   ventas      VentaItem[]
   bazarItems  BazarItem[]
+  kitItems    KitItem[]   @relation("KitItemComponente")
+  kit         Kit?        @relation("KitProducto")
 }
 
 model Venta {
@@ -107,6 +109,28 @@ model Proveedor {
   notas     String?
   creadoEn  DateTime @default(now())
   pedidos   Pedido[]
+}
+
+model Kit {
+  id          Int       @id @default(autoincrement())
+  nombre      String
+  costoBolsa  Float     @default(0)
+  comision    Float     @default(0)
+  precio      Float     @default(0)
+  squishyId   Int?      @unique
+  activo      Boolean   @default(true)
+  creadoEn    DateTime  @default(now())
+  items       KitItem[]
+  squishy     Squishy?  @relation("KitProducto", fields: [squishyId], references: [id])
+}
+
+model KitItem {
+  id        Int     @id @default(autoincrement())
+  kitId     Int
+  squishyId Int
+  cantidad  Int     @default(1)
+  kit       Kit     @relation(fields: [kitId], references: [id], onDelete: Cascade)
+  squishy   Squishy @relation("KitItemComponente", fields: [squishyId], references: [id])
 }
 
 model BazarItem {
