@@ -283,21 +283,21 @@ export default function Kits() {
 
                 {/* Lista de componentes seleccionados */}
                 {items.length > 0 && (
-                  <div className="mt-2 flex flex-col gap-1">
+                  <div className="mt-1.5 flex flex-col gap-0.5">
                     {items.map(it => (
                       <div key={it.squishyId}
-                        className="flex items-center gap-2 bg-[#0F0F13] border border-white/6 rounded-lg px-3 py-2">
-                        <span className="font-montserrat text-white/70 text-sm flex-1 truncate">{it.nombre}</span>
-                        <span className="font-montserrat text-white/30 text-xs shrink-0">{fmt(it.costo)}/u</span>
+                        className="flex items-center gap-2 bg-[#0F0F13] border border-white/6 rounded-lg px-2.5 py-1.5">
+                        <span className="font-montserrat text-white/70 text-xs flex-1 truncate">{it.nombre}</span>
+                        <span className="font-montserrat text-white/25 text-[10px] shrink-0">{fmt(it.costo)}/u</span>
                         <input type="number" min="1" value={it.cantidad}
                           onChange={e => setItemCantidad(it.squishyId, e.target.value)}
-                          className="w-14 bg-[#1A1A24] border border-white/10 rounded px-2 py-1
+                          className="w-11 bg-[#1A1A24] border border-white/10 rounded px-1.5 py-0.5
                                      text-white text-xs font-montserrat text-center focus:outline-none shrink-0" />
-                        <span className="font-montserrat text-emerald-400/70 text-xs w-14 text-right shrink-0">
+                        <span className="font-montserrat text-emerald-400/70 text-[10px] w-12 text-right shrink-0">
                           {fmt(r2(it.costo * it.cantidad))}
                         </span>
                         <button onClick={() => removeItem(it.squishyId)}
-                          className="text-white/15 hover:text-red-400 transition-colors text-xs ml-1 shrink-0">✕</button>
+                          className="text-white/15 hover:text-red-400 transition-colors text-[10px] shrink-0">✕</button>
                       </div>
                     ))}
                   </div>
