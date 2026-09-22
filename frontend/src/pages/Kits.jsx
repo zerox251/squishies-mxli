@@ -22,8 +22,14 @@ export default function Kits() {
   const [costoBolsa, setCostoBolsa] = useState('')
   const [comision,   setComision]   = useState('')
   const [precio,     setPrecio]     = useState('')
+  const [profitPct,  setProfitPct]  = useState('')
   const [items,      setItems]      = useState([]) // {squishyId, nombre, costo, cantidad}
   const [itemSearch, setItemSearch] = useState('')
+
+  // armar modal
+  // picker de productos
+  const [pickerOpen,   setPickerOpen]   = useState(false)
+  const [pickerSearch, setPickerSearch] = useState('')
 
   // armar modal
   const [armarKit,   setArmarKit]   = useState(null)
@@ -43,8 +49,8 @@ export default function Kits() {
   useEffect(load, [])
 
   function openNew() {
-    setEditId(null); setNombre(''); setCostoBolsa(''); setComision(''); setPrecio('')
-    setItems([]); setItemSearch(''); setModal(true)
+    setEditId(null); setNombre(''); setCostoBolsa(''); setComision(''); setPrecio(''); setProfitPct('')
+    setItems([]); setItemSearch(''); setPickerSearch(''); setModal(true)
   }
   function openEdit(kit) {
     setEditId(kit.id)
@@ -52,13 +58,18 @@ export default function Kits() {
     setCostoBolsa(String(kit.costoBolsa))
     setComision(String(kit.comision))
     setPrecio(String(kit.precio))
+    const costo = calcCosto(
+      kit.items.map(it => ({ costo: it.squishy?.costo || 0, cantidad: it.cantidad })),
+      kit.costoBolsa, kit.comision
+    )
+    setProfitPct(costo > 0 ? String(r2(((kit.precio / costo) - 1) * 100)) : '')
     setItems(kit.items.map(it => ({
       squishyId: it.squishyId,
       nombre:    it.squishy?.nombre || it.nombre || '',
       costo:     it.squishy?.costo  || 0,
       cantidad:  it.cantidad,
     })))
-    setItemSearch(''); setModal(true)
+    setItemSearch(''); setPickerSearch(''); setModal(true)
   }
 
   // agregar componente
@@ -75,6 +86,24 @@ export default function Kits() {
   }
 
   const costoCalculado = calcCosto(items, costoBolsa, comision)
+
+  // cuando cambia el costo, recalcular precio si hay % definido
+  useEffect(() => {
+    if (!profitPct || !costoCalculado) return
+    setPrecio(String(r2(costoCalculado * (1 + Number(profitPct) / 100))))
+  }, [costoCalculado]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function onProfitChange(v) {
+    setProfitPct(v)
+    if (costoCalculado > 0) setPrecio(String(r2(costoCalculado * (1 + Number(v) / 100))))
+  }
+  function onPrecioChange(v) {
+    setPrecio(v)
+    if (costoCalculado > 0 && Number(v) > 0)
+      setProfitPct(String(r2(((Number(v) / costoCalculado) - 1) * 100)))
+    else setProfitPct('')
+  }
+
   const filteredInv = inventario.filter(sq =>
     sq.nombre.toLowerCase().includes(itemSearch.toLowerCase()) &&
     !items.find(it => it.squishyId === sq.id)
@@ -234,26 +263,23 @@ export default function Kits() {
 
               {/* Componentes */}
               <div>
-                <label className="font-montserrat text-white/40 text-xs mb-1 block">Productos del kit</label>
-                <input type="text" value={itemSearch} placeholder="Buscar producto…"
-                  onChange={e => setItemSearch(e.target.value)} className={inputCls} />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="font-montserrat text-white/40 text-xs">Productos del kit</label>
+                  {items.length > 0 && (
+                    <span className="font-montserrat text-white/25 text-[10px]">{items.length} producto{items.length > 1 ? 's' : ''}</span>
+                  )}
+                </div>
 
-                {itemSearch.trim() && (
-                  <div className="border border-white/8 rounded-lg mt-1 max-h-36 overflow-y-auto">
-                    {filteredInv.slice(0, 15).map(sq => (
-                      <button key={sq.id} onClick={() => agregarItem(sq)}
-                        className="w-full text-left px-3 py-2 font-montserrat text-sm
-                                   border-b border-white/5 last:border-0 text-white/60
-                                   hover:bg-white/5 transition-colors flex justify-between items-center">
-                        <span>{sq.nombre}</span>
-                        <span className="text-white/25 text-xs">{fmt(sq.costo || 0)}/u · {sq.stock} uds</span>
-                      </button>
-                    ))}
-                    {filteredInv.length === 0 && (
-                      <p className="px-3 py-2 font-montserrat text-white/25 text-xs">Sin resultados</p>
-                    )}
-                  </div>
-                )}
+                <button type="button" onClick={() => { setPickerSearch(''); setPickerOpen(true) }}
+                  className="w-full bg-[#0F0F13] border border-white/10 hover:border-pop-coral/40
+                             rounded-lg px-3 py-2.5 text-left font-montserrat text-sm
+                             text-white/25 hover:text-white/50 transition-colors flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                       fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                  </svg>
+                  Agregar productos al kit…
+                </button>
 
                 {/* Lista de componentes seleccionados */}
                 {items.length > 0 && (
@@ -261,17 +287,17 @@ export default function Kits() {
                     {items.map(it => (
                       <div key={it.squishyId}
                         className="flex items-center gap-2 bg-[#0F0F13] border border-white/6 rounded-lg px-3 py-2">
-                        <span className="font-montserrat text-white/70 text-sm flex-1">{it.nombre}</span>
-                        <span className="font-montserrat text-white/30 text-xs">{fmt(it.costo)}/u</span>
+                        <span className="font-montserrat text-white/70 text-sm flex-1 truncate">{it.nombre}</span>
+                        <span className="font-montserrat text-white/30 text-xs shrink-0">{fmt(it.costo)}/u</span>
                         <input type="number" min="1" value={it.cantidad}
                           onChange={e => setItemCantidad(it.squishyId, e.target.value)}
                           className="w-14 bg-[#1A1A24] border border-white/10 rounded px-2 py-1
-                                     text-white text-xs font-montserrat text-center focus:outline-none" />
-                        <span className="font-montserrat text-emerald-400/70 text-xs w-14 text-right">
+                                     text-white text-xs font-montserrat text-center focus:outline-none shrink-0" />
+                        <span className="font-montserrat text-emerald-400/70 text-xs w-14 text-right shrink-0">
                           {fmt(r2(it.costo * it.cantidad))}
                         </span>
                         <button onClick={() => removeItem(it.squishyId)}
-                          className="text-white/15 hover:text-red-400 transition-colors text-xs ml-1">✕</button>
+                          className="text-white/15 hover:text-red-400 transition-colors text-xs ml-1 shrink-0">✕</button>
                       </div>
                     ))}
                   </div>
@@ -320,20 +346,35 @@ export default function Kits() {
                     )}
                   </div>
                 )}
-                <div>
-                  <label className="font-montserrat text-white/40 text-xs mb-1 block">Precio de venta ($)</label>
-                  <input type="number" value={precio} placeholder="0"
-                    onChange={e => setPrecio(e.target.value)}
-                    className="w-full bg-[#14141c] border border-pop-coral/30 rounded-lg px-3 py-2.5
-                               text-white text-sm font-montserrat placeholder-white/20
-                               focus:outline-none focus:border-pop-coral/60" />
-                  {precio && costoCalculado > 0 && (
-                    <p className="font-montserrat text-[10px] text-emerald-400/70 mt-1">
-                      Margen: {fmt(r2(Number(precio) - costoCalculado))}
-                      {' '}({Math.round((Number(precio) - costoCalculado) / Number(precio) * 100)}%)
-                    </p>
-                  )}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="font-montserrat text-white/40 text-xs mb-1 block">% Profit</label>
+                    <div className="relative">
+                      <input type="number" value={profitPct} placeholder="30"
+                        onChange={e => onProfitChange(e.target.value)}
+                        className="w-full bg-[#14141c] border border-emerald-500/30 rounded-lg pl-3 pr-7 py-2.5
+                                   text-white text-sm font-montserrat placeholder-white/20
+                                   focus:outline-none focus:border-emerald-500/60" />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 font-montserrat text-white/30 text-sm">%</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="font-montserrat text-white/40 text-xs mb-1 block">Precio de venta</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 font-montserrat text-white/30 text-sm">$</span>
+                      <input type="number" value={precio} placeholder="0"
+                        onChange={e => onPrecioChange(e.target.value)}
+                        className="w-full bg-[#14141c] border border-pop-coral/30 rounded-lg pl-6 pr-3 py-2.5
+                                   text-white text-sm font-montserrat placeholder-white/20
+                                   focus:outline-none focus:border-pop-coral/60" />
+                    </div>
+                  </div>
                 </div>
+                {precio && costoCalculado > 0 && Number(precio) > costoCalculado && (
+                  <p className="font-montserrat text-[10px] text-emerald-400/70 mt-1">
+                    Ganancia por kit: {fmt(r2(Number(precio) - costoCalculado))}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -345,6 +386,95 @@ export default function Kits() {
               <button onClick={save} disabled={saving || !nombre.trim() || items.length === 0}
                 className="flex-1 bg-pop-coral text-white font-montserrat font-bold text-sm py-3 rounded-xl disabled:opacity-50">
                 {saving ? 'Guardando…' : 'Guardar kit'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal picker de productos ─────────────────────────────────────────── */}
+      {pickerOpen && (
+        <div className="fixed inset-0 z-60 flex flex-col justify-end md:justify-center md:items-center bg-black/60 backdrop-blur-sm">
+          <div className="absolute inset-0" onClick={() => setPickerOpen(false)} />
+          <div className="relative bg-[#1A1A24] border border-white/10
+                          rounded-t-2xl md:rounded-2xl w-full md:max-w-md
+                          mb-14 md:mb-0 flex flex-col" style={{ maxHeight: '80vh' }}>
+
+            <div className="flex items-center justify-between px-5 pt-5 pb-3 flex-shrink-0">
+              <h3 className="font-anton text-white text-base tracking-wider">AGREGAR PRODUCTO</h3>
+              <button onClick={() => setPickerOpen(false)} className="text-white/25 hover:text-white/60 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                     fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+
+            {/* Buscador */}
+            <div className="px-5 pb-3 flex-shrink-0">
+              <div className="relative">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                     fill="none" stroke="currentColor" strokeWidth="2"
+                     className="absolute left-3 top-1/2 -translate-y-1/2 text-white/25">
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input autoFocus type="text" value={pickerSearch}
+                  placeholder="Buscar producto…"
+                  onChange={e => setPickerSearch(e.target.value)}
+                  className="w-full bg-[#0F0F13] border border-white/10 rounded-lg pl-9 pr-3 py-2.5
+                             text-white text-sm font-montserrat placeholder-white/20
+                             focus:outline-none focus:border-pop-coral/50" />
+              </div>
+            </div>
+
+            {/* Lista de productos */}
+            <div className="overflow-y-auto flex-1 px-3 pb-4">
+              {inventario
+                .filter(sq =>
+                  sq.nombre.toLowerCase().includes(pickerSearch.toLowerCase())
+                )
+                .map(sq => {
+                  const yaAgregado = items.find(it => it.squishyId === sq.id)
+                  return (
+                    <button key={sq.id}
+                      onClick={() => { if (!yaAgregado) { agregarItem(sq) } else { removeItem(sq.id) } }}
+                      className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl mb-1
+                                  transition-colors text-left
+                                  ${yaAgregado
+                                    ? 'bg-pop-coral/10 border border-pop-coral/20'
+                                    : 'hover:bg-white/5 border border-transparent'}`}>
+                      <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-colors
+                                       ${yaAgregado ? 'bg-pop-coral border-pop-coral' : 'border-white/15'}`}>
+                        {yaAgregado && (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24"
+                               fill="none" stroke="white" strokeWidth="3">
+                            <polyline points="20 6 9 17 4 12"/>
+                          </svg>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`font-montserrat text-sm truncate ${yaAgregado ? 'text-white' : 'text-white/70'}`}>
+                          {sq.nombre}
+                        </p>
+                        <p className="font-montserrat text-white/30 text-xs">
+                          {fmt(sq.costo || 0)}/u · {sq.stock} en stock
+                        </p>
+                      </div>
+                      {yaAgregado && (
+                        <span className="font-montserrat text-pop-coral text-xs shrink-0">Agregado</span>
+                      )}
+                    </button>
+                  )
+                })}
+              {inventario.filter(sq => sq.nombre.toLowerCase().includes(pickerSearch.toLowerCase())).length === 0 && (
+                <p className="font-montserrat text-white/25 text-sm text-center py-8">Sin resultados</p>
+              )}
+            </div>
+
+            <div className="px-5 pb-5 pt-2 flex-shrink-0 border-t border-white/5">
+              <button onClick={() => setPickerOpen(false)}
+                className="w-full bg-pop-coral text-white font-montserrat font-bold text-sm py-3 rounded-xl">
+                Listo {items.length > 0 ? `· ${items.length} producto${items.length > 1 ? 's' : ''}` : ''}
               </button>
             </div>
           </div>
