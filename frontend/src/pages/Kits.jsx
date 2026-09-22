@@ -234,11 +234,11 @@ export default function Kits() {
 
       {/* ── Modal crear/editar ─────────────────────────────────────────────── */}
       {modal && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end md:justify-center md:items-center bg-black/70 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
           <div className="absolute inset-0" onClick={() => setModal(false)} />
           <div className="relative bg-[#1A1A24] border border-white/10
-                          rounded-t-2xl md:rounded-2xl w-full md:max-w-lg
-                          mb-14 md:mb-0 flex flex-col max-h-[92vh]">
+                          rounded-2xl w-full max-w-lg
+                          flex flex-col max-h-[90vh]">
 
             <div className="flex items-center justify-between px-5 pt-5 pb-2 flex-shrink-0">
               <h2 className="font-anton text-white text-lg tracking-wider">
@@ -394,11 +394,11 @@ export default function Kits() {
 
       {/* ── Modal picker de productos ─────────────────────────────────────────── */}
       {pickerOpen && (
-        <div className="fixed inset-0 z-60 flex flex-col justify-end md:justify-center md:items-center bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
           <div className="absolute inset-0" onClick={() => setPickerOpen(false)} />
           <div className="relative bg-[#1A1A24] border border-white/10
-                          rounded-t-2xl md:rounded-2xl w-full md:max-w-md
-                          mb-14 md:mb-0 flex flex-col" style={{ maxHeight: '80vh' }}>
+                          rounded-2xl w-full max-w-md
+                          flex flex-col" style={{ maxHeight: '80vh' }}>
 
             <div className="flex items-center justify-between px-5 pt-5 pb-3 flex-shrink-0">
               <h3 className="font-anton text-white text-base tracking-wider">AGREGAR PRODUCTO</h3>
