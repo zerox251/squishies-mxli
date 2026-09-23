@@ -23,8 +23,10 @@ export default function Kits() {
   const [comision,   setComision]   = useState('')
   const [precio,     setPrecio]     = useState('')
   const [profitPct,  setProfitPct]  = useState('')
-  const [items,      setItems]      = useState([]) // {squishyId, nombre, costo, cantidad}
-  const [itemSearch, setItemSearch] = useState('')
+  const [items,         setItems]         = useState([]) // {squishyId, nombre, costo, cantidad}
+  const [itemSearch,    setItemSearch]    = useState('')
+  const [armarEnModal,  setArmarEnModal]  = useState('')
+  const [armarModalErr, setArmarModalErr] = useState('')
 
   // armar modal
   // picker de productos
@@ -50,7 +52,7 @@ export default function Kits() {
 
   function openNew() {
     setEditId(null); setNombre(''); setCostoBolsa(''); setComision(''); setPrecio(''); setProfitPct('')
-    setItems([]); setItemSearch(''); setPickerSearch(''); setModal(true)
+    setItems([]); setItemSearch(''); setPickerSearch(''); setArmarEnModal(''); setArmarModalErr(''); setModal(true)
   }
   function openEdit(kit) {
     setEditId(kit.id)
@@ -69,7 +71,7 @@ export default function Kits() {
       costo:     it.squishy?.costo  || 0,
       cantidad:  it.cantidad,
     })))
-    setItemSearch(''); setPickerSearch(''); setModal(true)
+    setItemSearch(''); setPickerSearch(''); setArmarEnModal(''); setArmarModalErr(''); setModal(true)
   }
 
   // agregar componente
@@ -111,10 +113,23 @@ export default function Kits() {
 
   async function save() {
     if (!nombre.trim() || items.length === 0) return
-    setSaving(true)
+    setSaving(true); setArmarModalErr('')
     const body = { nombre, costoBolsa, comision, precio, items }
     const path = editId ? `/api/kits/${editId}` : '/api/kits'
-    await apiFetch(path, { method: editId ? 'PUT' : 'POST', body: JSON.stringify(body) })
+    const res  = await apiFetch(path, { method: editId ? 'PUT' : 'POST', body: JSON.stringify(body) })
+    const kit  = await res.json()
+
+    if (armarEnModal && Number(armarEnModal) > 0) {
+      const kitId = kit.id || editId
+      const arRes = await apiFetch(`/api/kits/${kitId}/armar`, {
+        method: 'POST', body: JSON.stringify({ cantidad: Number(armarEnModal) }),
+      })
+      if (!arRes.ok) {
+        const err = await arRes.json()
+        setArmarModalErr(err.error || 'Error al armar')
+        setSaving(false); load(); return
+      }
+    }
     setSaving(false); setModal(false); load()
   }
 
@@ -379,6 +394,32 @@ export default function Kits() {
               </div>
             </div>
 
+            {/* Armar al guardar */}
+            <div className="px-5 pt-3 pb-1 flex-shrink-0 border-t border-white/5">
+              <p className="font-montserrat text-white/40 text-xs mb-2">Armar kits al guardar (opcional)</p>
+              <div className="flex items-center gap-3">
+                <div className="relative flex-1">
+                  <input type="number" min="0" value={armarEnModal} placeholder="0"
+                    onChange={e => { setArmarEnModal(e.target.value); setArmarModalErr('') }}
+                    className="w-full bg-[#0F0F13] border border-white/10 rounded-lg px-3 py-2
+                               text-white text-sm font-montserrat placeholder-white/20
+                               focus:outline-none focus:border-emerald-500/50" />
+                </div>
+                {items.length > 0 && (
+                  <p className="font-montserrat text-white/25 text-xs">
+                    Máx. {Math.min(...items.map(it => {
+                      const inv = inventario.find(s => s.id === it.squishyId)
+                      return inv ? Math.floor(inv.stock / it.cantidad) : 0
+                    }))} disponibles
+                  </p>
+                )}
+              </div>
+              {armarModalErr && (
+                <p className="font-montserrat text-red-400 text-xs mt-1.5 bg-red-500/10
+                              border border-red-500/20 rounded-lg px-2 py-1.5">{armarModalErr}</p>
+              )}
+            </div>
+
             <div className="px-5 pb-5 pt-2 flex gap-2 flex-shrink-0">
               <button onClick={() => setModal(false)}
                 className="flex-1 border border-white/10 text-white/40 font-montserrat text-sm py-3 rounded-xl">
@@ -386,7 +427,7 @@ export default function Kits() {
               </button>
               <button onClick={save} disabled={saving || !nombre.trim() || items.length === 0}
                 className="flex-1 bg-pop-coral text-white font-montserrat font-bold text-sm py-3 rounded-xl disabled:opacity-50">
-                {saving ? 'Guardando…' : 'Guardar kit'}
+                {saving ? 'Guardando…' : armarEnModal && Number(armarEnModal) > 0 ? `Guardar y armar ${armarEnModal}` : 'Guardar kit'}
               </button>
             </div>
           </div>
