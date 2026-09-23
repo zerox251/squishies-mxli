@@ -39,11 +39,11 @@ export default function Kits() {
 
   function load() {
     Promise.all([
-      apiFetch('/api/kits').then(r => r.json()),
-      apiFetch('/api/productos').then(r => r.json()),
+      apiFetch('/api/kits').then(r => r.ok ? r.json() : []),
+      apiFetch('/api/productos').then(r => r.ok ? r.json() : []),
     ]).then(([k, inv]) => {
-      setKits(k)
-      setInventario(inv.filter(p => p.activo))
+      setKits(Array.isArray(k) ? k : [])
+      setInventario(Array.isArray(inv) ? inv.filter(p => p.activo) : [])
     }).finally(() => setLoading(false))
   }
   useEffect(load, [])
