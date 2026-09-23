@@ -2,7 +2,7 @@ const BASE = import.meta.env.VITE_API_URL || ''
 
 export async function apiFetch(path, options = {}) {
   const token = localStorage.getItem('token')
-  return fetch(BASE + path, {
+  const res = await fetch(BASE + path, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -10,4 +10,11 @@ export async function apiFetch(path, options = {}) {
       ...options.headers,
     },
   })
+  if (res.status === 401) {
+    localStorage.removeItem('token')
+    localStorage.removeItem('alias')
+    localStorage.removeItem('email')
+    window.location.href = '/login'
+  }
+  return res
 }
