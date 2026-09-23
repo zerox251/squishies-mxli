@@ -6,11 +6,17 @@ router.get('/negocio', async (req, res) => {
   const hoy = new Date()
   const hace90 = new Date(hoy); hace90.setDate(hoy.getDate() - 90)
   const hace30 = new Date(hoy); hace30.setDate(hoy.getDate() - 30)
+  const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1)
 
-  const [ventas, squishys, pedidos] = await Promise.all([
+  const [ventas, squishys, pedidos, gastosAggreg] = await Promise.all([
     prisma.venta.findMany({ include: { items: true }, orderBy: { fecha: 'asc' } }),
     prisma.squishy.findMany({ where: { activo: true } }),
     prisma.pedido.findMany(),
+    prisma.gasto.aggregate({
+      where: { fecha: { gte: inicioMes } },
+      _sum: { total: true },
+      _count: true,
+    }),
   ])
 
   // Ventas por mes
@@ -86,6 +92,10 @@ router.get('/negocio', async (req, res) => {
       total: pedidos.length,
       deudaProveedores: deuda,
       pedidosEnTransito: { monto: transito.reduce((s, p) => s + p.total, 0), count: transito.length },
+    },
+    gastos: {
+      totalMes: gastosAggreg._sum.total || 0,
+      countMes: gastosAggreg._count || 0,
     },
   })
 })

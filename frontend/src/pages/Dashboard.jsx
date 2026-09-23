@@ -36,6 +36,7 @@ export default function Dashboard() {
   const v = data?.ventas || {}
   const inv = data?.inventario || {}
   const ped = data?.pedidos || {}
+  const gas = data?.gastos || {}
   const mesActual = v.porMes?.at(-1)
   const mesAnterior = v.porMes?.at(-2)
 
@@ -74,6 +75,12 @@ export default function Dashboard() {
           value={fmt(ped.deudaProveedores)}
           sub={ped.pedidosEnTransito?.count ? `${ped.pedidosEnTransito.count} en tránsito` : ''}
           color={ped.deudaProveedores > 0 ? 'text-yellow-400' : 'text-white'}
+        />
+        <KPI
+          label="Gastos este mes"
+          value={fmt(gas.totalMes)}
+          sub={gas.countMes ? `${gas.countMes} gasto${gas.countMes > 1 ? 's' : ''} registrado${gas.countMes > 1 ? 's' : ''}` : '—'}
+          color={gas.totalMes > 0 ? 'text-red-400' : 'text-white'}
         />
       </div>
 
