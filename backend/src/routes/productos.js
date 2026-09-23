@@ -3,7 +3,10 @@ const router = express.Router()
 const prisma = require('../lib/prisma')
 
 router.get('/', async (req, res) => {
-  const items = await prisma.squishy.findMany({ orderBy: { nombre: 'asc' } })
+  const items = await prisma.squishy.findMany({
+    orderBy: { nombre: 'asc' },
+    include: { kit: { select: { id: true } } },
+  })
   res.json(items)
 })
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { apiFetch } from '../lib/api'
 
 const EMPTY = { nombre: '', descripcion: '', precio: '', costo: '', stock: '' }
@@ -10,6 +11,7 @@ export default function Inventario() {
   const [form, setForm] = useState(EMPTY)
   const [editId, setEditId] = useState(null)
   const [saving, setSaving] = useState(false)
+  const navigate = useNavigate()
 
   function load() {
     apiFetch('/api/productos').then(r => r.json()).then(setItems).finally(() => setLoading(false))
@@ -19,6 +21,7 @@ export default function Inventario() {
 
   function openNew() { setForm(EMPTY); setEditId(null); setModal(true) }
   function openEdit(p) {
+    if (p.kit) { navigate('/kits'); return }
     setForm({ nombre: p.nombre, descripcion: p.descripcion || '', precio: p.precio, costo: p.costo ?? '', stock: p.stock })
     setEditId(p.id)
     setModal(true)
@@ -96,16 +99,26 @@ export default function Inventario() {
               </div>
               <span className="font-montserrat text-white/60 text-sm hidden md:block">{fmt(item.precio)}</span>
               <span className="font-montserrat text-white/35 text-xs">{item.costo ? fmt(item.costo) : '—'}</span>
-              <div className="flex gap-2 mt-1 md:mt-0">
-                <button onClick={() => openEdit(item)}
-                  className="font-montserrat text-xs text-pop-lav hover:text-white transition-colors">
-                  Editar
-                </button>
-                {item.activo && (
-                  <button onClick={() => deactivate(item.id)}
-                    className="font-montserrat text-xs text-white/20 hover:text-red-400 transition-colors">
-                    Baja
+              <div className="flex gap-2 mt-1 md:mt-0 items-center">
+                {item.kit ? (
+                  <button onClick={() => navigate('/kits')}
+                    className="font-montserrat text-xs text-emerald-400/70 hover:text-emerald-300
+                               bg-emerald-500/10 border border-emerald-500/20 rounded px-2 py-0.5 transition-colors">
+                    Kit → administrar
                   </button>
+                ) : (
+                  <>
+                    <button onClick={() => openEdit(item)}
+                      className="font-montserrat text-xs text-pop-lav hover:text-white transition-colors">
+                      Editar
+                    </button>
+                    {item.activo && (
+                      <button onClick={() => deactivate(item.id)}
+                        className="font-montserrat text-xs text-white/20 hover:text-red-400 transition-colors">
+                        Baja
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </div>
