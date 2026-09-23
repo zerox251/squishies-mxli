@@ -204,9 +204,9 @@ export default function Kits() {
                       </div>
                       {kit.precio > 0 && costoKit > 0 && (
                         <div>
-                          <p className="font-montserrat text-white/25 text-[10px]">Margen</p>
+                          <p className="font-montserrat text-white/25 text-[10px]">Profit</p>
                           <p className="font-montserrat text-emerald-400 text-sm">
-                            {Math.round((kit.precio - costoKit) / kit.precio * 100)}%
+                            {Math.round((kit.precio - costoKit) / costoKit * 100)}%
                           </p>
                         </div>
                       )}
@@ -373,6 +373,7 @@ export default function Kits() {
                 {precio && costoCalculado > 0 && Number(precio) > costoCalculado && (
                   <p className="font-montserrat text-[10px] text-emerald-400/70 mt-1">
                     Ganancia por kit: {fmt(r2(Number(precio) - costoCalculado))}
+                    {' · '}{Math.round((Number(precio) - costoCalculado) / costoCalculado * 100)}% profit
                   </p>
                 )}
               </div>
