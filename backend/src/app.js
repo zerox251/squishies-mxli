@@ -15,9 +15,17 @@ const proveedoresRoutes = require('./routes/proveedores')
 const pagosRoutes       = require('./routes/pagos')
 const kitsRoutes        = require('./routes/kits')
 
+const prisma = require('./lib/prisma')
+
 const app = express()
 app.use(cors())
 app.use(express.json())
+
+// keep-alive público — mantiene Supabase activo
+app.get('/api/ping', async (req, res) => {
+  await prisma.$queryRaw`SELECT 1`
+  res.json({ ok: true, ts: new Date().toISOString() })
+})
 
 app.use('/api/auth', authRoutes)
 app.use('/api/productos', authMiddleware, productosRoutes)
