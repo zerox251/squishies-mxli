@@ -34,6 +34,7 @@ export default function Cotizador() {
   const [descuento, setDescuento] = useState('')
   const [envio,     setEnvio]     = useState('')
   const [impuesto,  setImpuesto]  = useState('')
+  const [taxPct,    setTaxPct]    = useState('')
   const [tcAuto,    setTcAuto]    = useState(false)
 
   useEffect(() => {
@@ -105,21 +106,23 @@ export default function Cotizador() {
   const ajDescuento = Number(descuento) || 0
   const ajEnvio     = Number(envio)     || 0
   const ajImpuesto  = Number(impuesto)  || 0
-  const costoReal   = subtotalProductos - ajDescuento + ajEnvio + ajImpuesto
+  const ajTax       = subtotalProductos * ((Number(taxPct) || 0) / 100)
+  const costoReal   = subtotalProductos - ajDescuento + ajEnvio + ajImpuesto + ajTax
 
   // Paso 2: repartir ajustes por peso de inversión → costo/precio reales por producto
-  const ajusteNeto = ajEnvio + ajImpuesto - ajDescuento
+  const ajusteNeto = ajEnvio + ajImpuesto + ajTax - ajDescuento
   const calcs = calcsBase.map(r => {
     if (subtotalProductos === 0 || r.inversion === 0) return r
     const share          = r.inversion / subtotalProductos
     const aEnvio         = share * ajEnvio
     const aImpuesto      = share * ajImpuesto
+    const aTax           = share * ajTax
     const aDescuento     = share * ajDescuento
     const inversionReal  = r.inversion + share * ajusteNeto
     const costoRealUnit  = r.totalUnidades > 0 ? inversionReal / r.totalUnidades : 0
     const precioPublico  = costoRealUnit * (1 + margen / 100)
     const gananciaTotal  = (precioPublico - costoRealUnit) * r.totalUnidades
-    return { ...r, inversionReal, aEnvio, aImpuesto, aDescuento, costoUnit: costoRealUnit, precioPublico, gananciaTotal }
+    return { ...r, inversionReal, aEnvio, aImpuesto, aTax, aDescuento, costoUnit: costoRealUnit, precioPublico, gananciaTotal }
   })
 
   const totalIngreso  = calcs.reduce((s, r) => s + r.precioPublico * r.totalUnidades, 0)
@@ -168,6 +171,7 @@ export default function Cotizador() {
           if (label === 'Descuento')        setDescuento(String(val))
           if (label === 'Envío')            setEnvio(String(val))
           if (label === 'Imp. importación') setImpuesto(String(val))
+          if (label === 'Tax ventas %')     setTaxPct(String(val))
         }
         if (imported.length > 0) { setRows(imported); setNextId(id) }
       }
@@ -192,6 +196,7 @@ export default function Cotizador() {
       ...(ajDescuento > 0 ? [['Descuento', `-${ajDescuento.toFixed(2)}`]] : []),
       ...(ajEnvio     > 0 ? [['Envío',     `+${ajEnvio.toFixed(2)}`]]     : []),
       ...(ajImpuesto  > 0 ? [['Imp. importación', `+${ajImpuesto.toFixed(2)}`]] : []),
+      ...(ajTax       > 0 ? [['Tax ventas %', `${Number(taxPct).toFixed(3)}`]] : []),
       ['Costo real', costoReal.toFixed(2)],
       ['Ingreso esperado', totalIngreso.toFixed(2)],
       ['Ganancia bruta', totalGanancia.toFixed(2)],
@@ -248,6 +253,7 @@ export default function Cotizador() {
       ...(ajDescuento > 0 ? [['Descuento', `- $${ajDescuento.toFixed(2)}`]] : []),
       ...(ajEnvio     > 0 ? [['Envío',     `+ $${ajEnvio.toFixed(2)}`]]     : []),
       ...(ajImpuesto  > 0 ? [['Imp. importación', `+ $${ajImpuesto.toFixed(2)}`]] : []),
+      ...(ajTax       > 0 ? [['Tax ventas', `+ $${ajTax.toFixed(2)} (${Number(taxPct).toFixed(3)}%)`]] : []),
       ['Costo real', `$${costoReal.toFixed(2)}`],
       ['Ingreso esperado', `$${totalIngreso.toFixed(2)}`],
       ['Ganancia bruta', `$${totalGanancia.toFixed(2)}`],
@@ -392,6 +398,7 @@ export default function Cotizador() {
                     <div className="pl-6 mt-1 flex gap-3 flex-wrap">
                       {r.aEnvio     > 0 && <span className="font-montserrat text-white/25 text-[9px]">Flete +{fmt(r.aEnvio)}</span>}
                       {r.aImpuesto  > 0 && <span className="font-montserrat text-white/25 text-[9px]">Imp. +{fmt(r.aImpuesto)}</span>}
+                      {r.aTax       > 0 && <span className="font-montserrat text-amber-400/40 text-[9px]">Tax +{fmt(r.aTax)}</span>}
                       {r.aDescuento > 0 && <span className="font-montserrat text-emerald-500/40 text-[9px]">Desc. −{fmt(r.aDescuento)}</span>}
                     </div>
                   )}
@@ -461,6 +468,7 @@ export default function Cotizador() {
                                         transition-opacity duration-150 z-20 whitespace-nowrap text-left shadow-xl">
                           {r.aEnvio     > 0 && <p className="font-montserrat text-white/35 text-[10px]">Flete <span className="text-white/65 ml-1">{fmt(r.aEnvio)}</span></p>}
                           {r.aImpuesto  > 0 && <p className="font-montserrat text-white/35 text-[10px]">Imp. <span className="text-white/65 ml-1">{fmt(r.aImpuesto)}</span></p>}
+                          {r.aTax       > 0 && <p className="font-montserrat text-white/35 text-[10px]">Tax <span className="text-amber-400/70 ml-1">{fmt(r.aTax)}</span></p>}
                           {r.aDescuento > 0 && <p className="font-montserrat text-white/35 text-[10px]">Desc. <span className="text-emerald-400/70 ml-1">−{fmt(r.aDescuento)}</span></p>}
                         </div>
                       </div>
@@ -508,7 +516,7 @@ export default function Cotizador() {
 
           {/* Ajustes */}
           <p className="font-anton text-white/35 text-[10px] tracking-widest mb-2">AJUSTES DEL PEDIDO</p>
-          <div className="grid grid-cols-3 gap-2 mb-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
             {[
               { label: '− Descuento', val: descuento, set: setDescuento, accent: 'focus:border-emerald-500/40' },
               { label: '+ Envío',     val: envio,     set: setEnvio,     accent: '' },
@@ -523,6 +531,20 @@ export default function Cotizador() {
                               focus:outline-none ${accent || 'focus:border-white/25'} text-center`} />
               </div>
             ))}
+            <div>
+              <label className="font-montserrat text-white/25 text-[10px] block mb-1">+ % Tax ventas</label>
+              <div className="flex items-center gap-1">
+                <input type="number" value={taxPct} min={0} step={0.001} placeholder="8.25"
+                  onChange={e => setTaxPct(e.target.value)}
+                  className="flex-1 min-w-0 bg-[#0F0F13] border border-white/8 rounded-lg px-2 py-1.5
+                             text-white text-xs font-montserrat placeholder-white/12
+                             focus:outline-none focus:border-amber-500/40 text-center" />
+                <span className="font-montserrat text-white/25 text-xs flex-shrink-0">%</span>
+              </div>
+              {ajTax > 0 && (
+                <p className="font-montserrat text-amber-400/50 text-[9px] mt-0.5 text-center">= {fmt(ajTax)}</p>
+              )}
+            </div>
           </div>
 
           {/* Resumen */}
@@ -532,7 +554,8 @@ export default function Cotizador() {
             {ajDescuento > 0 && <SRow label="Descuento" value={`− ${fmt(ajDescuento)}`} green />}
             {ajEnvio     > 0 && <SRow label="Envío"     value={`+ ${fmt(ajEnvio)}`} />}
             {ajImpuesto  > 0 && <SRow label="Imp. importación" value={`+ ${fmt(ajImpuesto)}`} />}
-            {(ajDescuento > 0 || ajEnvio > 0 || ajImpuesto > 0) && (
+            {ajTax       > 0 && <SRow label={`Tax ventas (${Number(taxPct).toFixed(3)}%)`} value={`+ ${fmt(ajTax)}`} amber />}
+            {(ajDescuento > 0 || ajEnvio > 0 || ajImpuesto > 0 || ajTax > 0) && (
               <div className="border-t border-white/6 pt-1.5">
                 <SRow label="Costo real" value={fmt(costoReal)} bold />
               </div>
@@ -728,12 +751,12 @@ function Chip({ label, rose, green }) {
   )
 }
 
-function SRow({ label, value, green, bold }) {
+function SRow({ label, value, green, amber, bold }) {
   return (
     <div className="flex justify-between items-center">
       <span className="font-montserrat text-white/35 text-xs">{label}</span>
       <span className={`font-montserrat text-sm font-semibold
-        ${green ? 'text-emerald-400' : bold ? 'text-white' : 'text-white/55'}`}>
+        ${green ? 'text-emerald-400' : amber ? 'text-amber-400' : bold ? 'text-white' : 'text-white/55'}`}>
         {value}
       </span>
     </div>
