@@ -325,9 +325,9 @@ export default function Cotizador() {
       <div className="bg-[#1A1A24] border border-[#2a2a35] rounded-xl overflow-hidden mb-3">
 
         {/* Column headers — desktop only */}
-        <div className="hidden md:grid grid-cols-[1.5rem_1fr_6rem_6rem_8rem_7rem_7rem_7rem_7rem_2rem]
+        <div className="hidden md:grid grid-cols-[1.5rem_1fr_6rem_6rem_8rem_7rem_7rem_7rem_7rem_7rem_2rem]
                         gap-2 px-3 py-1.5 border-b border-white/5">
-          {['#','Producto','Pzas/paq','Paquetes','Precio','Costo/u','P.público','Ajuste','Total',''].map((h, i) => (
+          {['#','Producto','Pzas/paq','Paquetes','Precio','Costo/u','P.Público/u','P.Público/paq','Ajuste','Costo Total',''].map((h, i) => (
             <span key={i} className="font-montserrat text-white/20 text-[10px] text-center first:text-left last:text-right">
               {h}
             </span>
@@ -389,7 +389,8 @@ export default function Cotizador() {
                     <div className="pl-6 mt-1.5 flex gap-2.5 flex-wrap">
                       <Chip label={`${r.totalUnidades}u`} />
                       <Chip label={`Costo ${fmt(r.costoUnit)}`} />
-                      <Chip label={`Público ${fmt(r.precioPublico)}`} rose />
+                      <Chip label={`Público/u ${fmt(r.precioPublico)}`} rose />
+                      {Number(r.piezas) > 1 && <Chip label={`Público/paq ${fmt(r.precioPublico * (Number(r.piezas) || 0))}`} rose />}
                       <Chip label={`Inv. ${fmt(r.inversionReal ?? r.inversion)}`} />
                       <Chip label={`+${fmt(r.gananciaTotal)}`} green />
                     </div>
@@ -419,7 +420,7 @@ export default function Cotizador() {
                 </div>
 
                 {/* Desktop layout — table row */}
-                <div className="hidden md:grid grid-cols-[1.5rem_1fr_6rem_6rem_8rem_7rem_7rem_7rem_7rem_2rem]
+                <div className="hidden md:grid grid-cols-[1.5rem_1fr_6rem_6rem_8rem_7rem_7rem_7rem_7rem_7rem_2rem]
                                 gap-2 items-center">
                   <span className="font-montserrat text-white/20 text-[10px]">{i + 1}</span>
                   <input type="text" value={r.nombre} placeholder="Nombre…"
@@ -453,6 +454,11 @@ export default function Cotizador() {
                   <span className={`font-montserrat text-xs text-center font-semibold
                                     ${hasData ? 'text-pop-rose' : 'text-white/20'}`}>
                     {hasData ? fmt(r.precioPublico) : '—'}
+                  </span>
+                  {/* Columna P.Público/paq */}
+                  <span className={`font-montserrat text-xs text-center font-semibold
+                                    ${hasData ? 'text-pop-rose/70' : 'text-white/20'}`}>
+                    {hasData ? fmt(r.precioPublico * (Number(r.piezas) || 0)) : '—'}
                   </span>
                   {/* Columna Ajuste: flete + imp absorbido */}
                   <div className="text-center">
